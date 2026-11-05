@@ -520,7 +520,7 @@ nav.tabs button{font-family:var(--f-display);letter-spacing:.06em;text-transform
 .fview{display:flex;flex-direction:column;flex:1;min-height:0}.fvbar{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #2b2b2b}
 .fvstage{flex:1;display:flex;align-items:center;justify-content:center;padding:14px;min-height:0;overflow:hidden}.fvstage img{height:100%;max-height:340px;max-width:100%;aspect-ratio:1/1;object-fit:contain;background:#fff;box-shadow:0 8px 28px rgba(0,0,0,.5)}.fvstage video{max-width:100%;max-height:100%}
 @keyframes toastin{from{transform:translateX(calc(100% + 24px));opacity:0}to{transform:none;opacity:1}}.dtoast.slidein{animation:toastin .42s cubic-bezier(.2,.9,.25,1) both}@media (prefers-reduced-motion:reduce){.dtoast.slidein{animation:none}}
-.fbcred{display:block;letter-spacing:.18em;text-transform:uppercase;font-size:11px;margin-bottom:8px}
+.fbcred{display:block;margin:-4px 0 6px}.aspect-logo{height:54px;width:auto;display:block;opacity:.9}.gfoot .aspect-logo{height:32px;margin-top:8px}:root[data-mode="light"] .aspect-logo{filter:invert(1) brightness(.2)}
 
 #aigate{position:fixed;inset:0;z-index:9000;background:var(--bg);background-image:repeating-linear-gradient(115deg,transparent 0 140px,var(--stripe) 140px 260px);display:flex;align-items:center;justify-content:center;padding:24px;transition:opacity .5s}
 #aigate.done{opacity:0;pointer-events:none}
@@ -1570,7 +1570,7 @@ function header(){
 }
 function vIntro(){
   const ok=S.org.name.trim()&&S.org.tag.trim()&&S.tier;
-  return`<section class="hero"><div class="wm-hero"><i></i><i></i><i></i><i></i><div class="wm">${WORDMARK}</div><b></b><u></u></div><span class="note fbcred">A Freshbatch game</span><span class="eyebrow">Ascension Americas · Grand Final · São Paulo</span>
+  return`<section class="hero"><div class="wm-hero"><i></i><i></i><i></i><i></i><div class="wm">${WORDMARK}</div><b></b><u></u></div><span class="fbcred"><img class="aspect-logo" src="wall/aspect.png" alt="by aspect"></span><span class="eyebrow">Ascension Americas · Grand Final · São Paulo</span>
   <h1>You beat ENVY. The league is yours to lose.</h1>
   <p class="ticker">FINAL — YOU 3 : 2 ${tlogo('envy','sm')}ENVY · Their VCT Americas 2026 slot is now yours. Eleven partner teams are waiting.</p>
   <p class="mute">You're the team manager. Build the org, sign real free agents, answer your mail and messages, then run every veto, agent pick and playstyle call through Kickoff, Stage 1 and Stage 2. Top of the table goes to Champions Shanghai.</p></section>
@@ -1905,7 +1905,7 @@ function gateUpdate(){const g=gateEl();const st=LLM.st;
   const body=st==='nogpu'?`<h2>This device can't run LosersQ</h2><p>Every person in LosersQ is voiced by a language model that runs on your own computer. That needs a browser with WebGPU.</p><ul><li>Use <b>Chrome</b> or <b>Edge</b> (version 113 or newer) on a Windows, Mac or Linux computer.</li><li>Phones, tablets, Safari and Firefox aren't supported yet.</li><li>Check that hardware acceleration is turned on in your browser settings.</li></ul>`
    :st==='error'?`<h2>The dialogue model didn't load</h2><p class="gerr">${esc(LLM.msg)}</p><p>Check your connection and free disk space, then try again.</p><button class="btn primary" onclick="LLM.st='off';llmLoad()">Try again</button>`
    :`<h2>Loading the dialogue model</h2><p>LosersQ runs its characters on your computer. The first launch downloads about 1 GB; after that it starts in seconds.</p><div class="gbar"><i style="width:${LLM.pct}%"></i></div><p class="note">${LLM.pct}% · ${esc((LLM.msg||'').slice(0,110))}</p>`;
-  g.innerHTML=`<div class="gbox"><div class="gwm">${WORDMARK}</div>${body}<p class="note gfoot">A Freshbatch game</p></div>`}
+  g.innerHTML=`<div class="gbox"><div class="gwm">${WORDMARK}</div>${body}<p class="gfoot"><img class="aspect-logo" src="wall/aspect.png" alt="by aspect"></p></div>`}
 
 /* who you're talking to */
 const VOICE={chill:'laid-back, lowercase, short, the odd "lol" or "ngl"',hype:'high energy, lowercase, slang like "fr", "lets go", "W"',blunt:'direct and terse, proper capitalization, no filler',quiet:'reserved, few words, lowercase'};
@@ -2499,7 +2499,7 @@ function render(){if(S)syncPool();
   document.documentElement.style.setProperty('--you',S.org.color||COLORS[0]);document.documentElement.dataset.mode=S.theme||'dark';
   const v=S.view==='intro'?vIntro():S.match?vMatch():S.view==='market'?vMarket():S.view==='facilities'||S.view==='guide'?vGuide():S.view==='staff'?vStaff():S.view==='schedule'?vSchedule():S.view==='team'?vTeam():S.view==='sponsors'?vDesk():S.view==='desk'?vDesk():S.view==='league'?vLeague():vHQ();
   const a=document.activeElement;const fid=a&&a.id;const sel=a&&a.selectionStart;
-  document.getElementById('app').innerHTML=header()+`<main class="wrap">${v}</main>${S.nego?negoModal():''}<footer><div class="wrap"><span>A Freshbatch game. Rosters from VLR.gg VCT 2026 Americas event pages. Ratings, map pools and metas are sim estimates.</span>${S.view!=='intro'&&S.stageIdx<3?`<button class="btn sm ghost danger" onclick="act.reset()">${confirmReset?'Click again to wipe this career':'New career'}</button>`:''}</div></footer>`;
+  document.getElementById('app').innerHTML=header()+`<main class="wrap">${v}</main>${S.nego?negoModal():''}<footer><div class="wrap"><span>An Aspect game. Rosters from VLR.gg VCT 2026 Americas event pages. Ratings, map pools and metas are sim estimates.</span>${S.view!=='intro'&&S.stageIdx<3?`<button class="btn sm ghost danger" onclick="act.reset()">${confirmReset?'Click again to wipe this career':'New career'}</button>`:''}</div></footer>`;
   {const bb=document.getElementById('bubbles');if(bb)bb.scrollTop=bb.scrollHeight}
   if(fid){const e=document.getElementById(fid);if(e){e.focus();if(sel!=null&&e.setSelectionRange)try{e.setSelectionRange(sel,sel)}catch(_){}}}
   if(S.match&&S.match.step==='veto'){const t=vetoTurn();if(t&&t.who==='opp'){clearTimeout(vetoTimer);vetoTimer=setTimeout(oppVeto,700)}}
@@ -2509,11 +2509,11 @@ function render(){if(S)syncPool();
 S=load()||fresh();
 try{gateUpdate();if(standalone())llmLoad()}catch(e){}
 (function splash(){let seen=false;try{seen=sessionStorage.getItem('lq.intro')==='1'}catch(e){}if(seen||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  const seq=[{src:'freshbatch.mp4',bg:'#f5ebdb',max:7500},{src:'intro.mp4',bg:'#111824',max:5000}];let i=-1,t=null;
+  const seq=[{src:'aspect.mp4',bg:'#000000',max:5500},{src:'intro.mp4',bg:'#111824',max:5000}];let i=-1,t=null;
   const d=document.createElement('div');d.id='splash';d.setAttribute('role','button');d.setAttribute('aria-label','Skip intro');d.innerHTML='<video autoplay muted playsinline></video><span>CLICK TO SKIP</span>';
   const v=d.querySelector('video');
   const end=()=>{if(!d.isConnected)return;clearTimeout(t);d.style.opacity='0';setTimeout(()=>d.remove(),400);try{sessionStorage.setItem('lq.intro','1')}catch(e){}};
-  const next=()=>{i++;if(i>=seq.length){end();return}clearTimeout(t);d.style.background=seq[i].bg;d.querySelector('span').style.color=i===0?'#1a0f0a':'#ece8df';v.src=seq[i].src;v.play().catch(()=>{});t=setTimeout(next,seq[i].max)};
+  const next=()=>{i++;if(i>=seq.length){end();return}clearTimeout(t);d.style.background=seq[i].bg;d.querySelector('span').style.color='#ece8df';v.src=seq[i].src;v.play().catch(()=>{});t=setTimeout(next,seq[i].max)};
   v.onended=()=>setTimeout(next,i===seq.length-1?500:150);v.onerror=next;
   d.onclick=end;document.addEventListener('keydown',end,{once:true});document.body.appendChild(d);next()})();
 (function migrate(){(S.mail||[]).forEach(x=>x.thread.forEach(t=>{t.body=String(t.body).replace(/\n\+1 \(\d{3}\) 555-\d{4}(?=\n)/g,'')}));if(S.fanMs==null&&S.view!=='intro'&&!S.fanInit){const n=fanCount(S.fame);S.fanMs=FAN_MS.filter(x=>x<=n).pop()||0}if(S.perks&&S.perks.bteam&&!(S.bteam||[]).length&&S.fa)signAcademy();if(S.chats&&S.chats.owner){S.chats.owner.name=OWNER.name;S.chats.owner.sub=OWNER.sub}(S.notis||[]).forEach(n=>{if(n.title==='Dana Whitlock')n.title=OWNER.name});if(S.staffMarket){STAFF.forEach(x=>{if(!S.staffMarket.some(y=>y.id===x.id)&&!(S.staff||[]).some(y=>y.id===x.id))S.staffMarket.push(clone(x))})}syncPool();(S.teams||[]).forEach(t=>{if(VLRMAP[t.id]&&t.vlr!==2){t.maps=clone(VLRMAP[t.id]);t.vlr=2}});if(S.sponsors)S.sponsors=S.sponsors.filter(d=>spT(d.id));if(S.sOffers)S.sOffers=S.sOffers.filter(o=>spT(o.id));(S.mail||[]).forEach(m=>{if(m.act&&m.act.type==='sponsor'&&!spT(m.act.sid)){m.done=true;m.expired=true}});if(!S.blocked)S.blocked={mail:{},chat:{}};if(S.desk)S.desk.booting=false;if(!S.notis)S.notis=[];if(S.desk){S.desk.flyout=null;S.desk.busy=false}Object.values(S.chats||{}).forEach(c=>{if(c.typing){c.typing=false;if(!c.pending&&c.msgs.length)c.pending=null}});if(S.desk&&S.desk.ipos)delete S.desk.ipos.browser;if(S.desk&&S.desk.open)S.desk.open=S.desk.open.filter(x=>x!=='browser');if(S.rv!==2){const mine=new Set(S.roster.map(p=>p.id));S.teams=initialTeams();S.fa=initialFA(S.teams).filter(p=>!mine.has(p.id));S.news=[];S.neg={};

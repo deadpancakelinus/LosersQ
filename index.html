@@ -1885,7 +1885,7 @@ function sendChat(k,text){if(sendChatPending(k,text))return;sendChatBase(k,text)
 const AI_SENTINEL=1;
 function aiOn(){return true}
 function standalone(){return true}
-const SITE='https://deadpancakelinus.github.io/losersq/';
+const SITE='https://deadpancakelinus.github.io/LosersQ/';
 const LLM={st:'off',pct:0,eng:null,msg:'',q:Promise.resolve()};const LLM_MODEL='Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
 function llmReady(){return LLM.st==='ready'}
 let llmPaint=0;function llmProgressOld(){const n=Date.now();if(n-llmPaint>400){llmPaint=n;if(S.view==='desk'&&S.desk.open.includes('settings'))render()}}

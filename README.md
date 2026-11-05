@@ -4,7 +4,7 @@ A VCT Americas 2026 manager sim by **Aspect**.
 
 You beat ENVY at Ascension and took their slot. Build the roster, run the office, handle sponsors, scrim, veto, and try to make Champions.
 
-**Play:** https://deadpancakelinus.github.io/losersq/
+**Play:** https://deadpancakelinus.github.io/LosersQ/
 
 ## Requirements
 

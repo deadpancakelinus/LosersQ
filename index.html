@@ -533,6 +533,13 @@ nav.tabs button{font-family:var(--f-display);letter-spacing:.06em;text-transform
 .slot{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:4px;min-height:190px;padding:16px;border:1px solid var(--line);background:var(--panel);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
 .slot.cur{border-color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}.slot.empty{border-style:dashed}.slot h3{font-style:normal;font-size:22px;text-transform:uppercase;overflow-wrap:anywhere}
 .slothead{width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.slot .hnum{color:var(--accent);font-family:var(--f-mono);font-size:11px;letter-spacing:.16em}
+.hfig{position:relative;width:100%;max-width:190px;aspect-ratio:619/666;-webkit-mask-image:radial-gradient(ellipse 62% 60% at 50% 48%,#000 60%,transparent 100%);mask-image:radial-gradient(ellipse 62% 60% at 50% 48%,#000 60%,transparent 100%)}
+.hfig img{width:100%;height:100%;object-fit:cover;display:block;filter:contrast(1.15) brightness(1.1)}
+.hfig::after{content:"";position:absolute;inset:0;background:var(--rc);mix-blend-mode:color;opacity:.75;pointer-events:none}
+.hfig::before{content:"";position:absolute;inset:0;z-index:1;background:radial-gradient(ellipse 60% 40% at 50% 0%,color-mix(in srgb,var(--rc) 35%,transparent),transparent 70%);mix-blend-mode:screen;pointer-events:none}
+.hfig.coach::after{opacity:0}.hfig.coach::before{opacity:.5}
+.hcard:hover .hfig{transform:translateY(-3px);transition:transform .25s}
+.hcard.vacant .hfig img{filter:brightness(.6)}
 </style>
 
 <div id="app"></div>
@@ -2331,12 +2338,13 @@ function silhouette(kind,seed){const c=RCOL[kind]||'#ece8df';const id='sg'+Strin
   ${sh?`<path d="M${70-hw-1} 52c2-22 16-30 ${hw+1} -30s${hw-2} 6 ${hw+3} 22c-8-9-18-13-30-12-9 1-17 6-${hw-6} 20z" fill="#0b0f16"/>`:`<path d="M${70-hw} 48c4-18 18-24 ${hw} -24s${hw-4} 6 ${hw} 22c-10-6-20-8-${hw} -6-8 1-16 4-${hw} 8z" fill="#0b0f16"/>`}
   ${coach?`<path d="M54 103l16 18 16-18" fill="none" stroke="#2a3446" stroke-width="3"/>`:`<path d="M${70-hw-4} 58c0-24 ${hw*.4} -38 ${hw+4} -38s${hw+4} 14 ${hw+4} 38" fill="none" stroke="#0e131b" stroke-width="5"/><rect x="${70-hw-9}" y="50" width="10" height="20" rx="4" fill="#0e131b" stroke="${c}" stroke-opacity=".7"/><rect x="${70+hw-1}" y="50" width="10" height="20" rx="4" fill="#0e131b" stroke="${c}" stroke-opacity=".25"/><path d="M${70-hw-4} 66q6 14 22 14" fill="none" stroke="#0e131b" stroke-width="2.5"/>`}
   </svg>`}
+function figure(seed,coach){const flip=seeded('fig'+seed)()<.5;return`<div class="hfig ${coach?'coach':''}"><img src="wall/hood.jpg" alt="" style="${flip?'transform:scaleX(-1)':''}"></div>`}
 function heroCard(p,i,sub){const s=S.stats[p.id]||{k:0,d:0,a:0,maps:0};const kd=s.d?(s.k/s.d).toFixed(2):'–';const comp=p.agents[0];
-  return`<article class="hcard ${sub?'sub':''}" style="--rc:${RCOL[p.role]}"><div class="spot"></div>${silhouette(p.role,p.id)}
+  return`<article class="hcard ${sub?'sub':''}" style="--rc:${RCOL[p.role]}"><div class="spot"></div>${figure(p.id)}
    <div class="ped"><span class="hnum">${sub?'SUB':String(i+1).padStart(2,'0')}</span><h3>${esc(p.name)}</h3><div class="hrole"><span class="role r-${p.role}">${p.role}</span>${p.igl?'<span class="chip">IGL</span>':''}</div>
    <div class="hstats"><div><span>AIM</span><b>${Math.round(p.aim)}</b></div><div><span>UTIL</span><b>${Math.round(p.util)}</b></div><div><span>CLUTCH</span><b>${Math.round(p.clutch)}</b></div></div>
    <div class="hfoot"><span>${esc(comp)} main</span><span>OVR <b>${Math.round(ovr(p))}</b></span><span>K/D <b>${kd}</b></span></div></div></article>`}
-function staffCard(x,title){return`<article class="hcard coach ${x?'':'vacant'}" style="--rc:#ece8df"><div class="spot"></div>${silhouette('Coach',x?x.id:title)}<div class="ped"><span class="hnum">${title}</span><h3>${x?esc(x.name):'Vacant'}</h3><div class="hfoot">${x?`<span>${'★'.repeat(x.stars)}${'☆'.repeat(5-x.stars)}</span><span>${esc(x.resume[x.resume.length-1]).slice(0,60)}</span>`:'<span>Hire on the Staff tab</span>'}</div></div></article>`}
+function staffCard(x,title){return`<article class="hcard coach ${x?'':'vacant'}" style="--rc:#ece8df"><div class="spot"></div>${figure(x?x.id:title,true)}<div class="ped"><span class="hnum">${title}</span><h3>${x?esc(x.name):'Vacant'}</h3><div class="hfoot">${x?`<span>${'★'.repeat(x.stars)}${'☆'.repeat(5-x.stars)}</span><span>${esc(x.resume[x.resume.length-1]).slice(0,60)}</span>`:'<span>Hire on the Staff tab</span>'}</div></div></article>`}
 function vTeam(){const st=starters(),subs=S.roster.filter(p=>!st.includes(p));const hc=(S.staff||[]).find(x=>x.slot==='hc'),ac=(S.staff||[]).find(x=>x.slot==='ac');
   const w=S.history.length+'';const rec=S.stage&&S.stage.rec&&S.stage.rec.you;
   return`<section class="hall"><div class="hall-head"><img class="hall-emb" src="wall/emblem.png" alt=""><div><span class="eyebrow">VCT Americas 2026</span><h1>${esc(S.org.name)}</h1><p class="mute">${rec?`${STAGES[S.stageIdx].name} · ${rec.w}-${rec.l}`:'Roster'} · ${fmtFans(S.fame)} followers · Chemistry ${Math.round(S.chem)}</p></div></div>

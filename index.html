@@ -528,6 +528,11 @@ nav.tabs button{font-family:var(--f-display);letter-spacing:.06em;text-transform
 .gbox h2{font-size:26px}.gbox p,.gbox li{color:var(--mute)}.gbox ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}.gbox a{color:var(--accent)}
 .gbar{height:8px;background:var(--panel2);border:1px solid var(--line);overflow:hidden}.gbar i{display:block;height:100%;background:var(--accent);transition:width .3s}
 .gerr{font-family:var(--f-mono);font-size:12px;color:var(--loss)!important}.gfoot{letter-spacing:.18em;text-transform:uppercase;font-size:11px;margin-top:10px}
+.savesbtn{order:5;margin-left:auto}.bar-in .kvs{order:4}
+.saves{display:flex;flex-direction:column;gap:18px}.slotgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.slot{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:4px;min-height:190px;padding:16px;border:1px solid var(--line);background:var(--panel);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.slot.cur{border-color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}.slot.empty{border-style:dashed}.slot h3{font-style:normal;font-size:22px;text-transform:uppercase;overflow-wrap:anywhere}
+.slothead{width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.slot .hnum{color:var(--accent);font-family:var(--f-mono);font-size:11px;letter-spacing:.16em}
 </style>
 
 <div id="app"></div>
@@ -731,9 +736,9 @@ function fillRosters(k){const want=new Set();S.teams.forEach(t=>(TL[t.id][k]||[]
   S.teams.forEach(t=>{if(t.players.length<5){const c=S.fa.slice().sort((a,b)=>ovr(b)-ovr(a))[0];if(c){S.fa.splice(S.fa.indexOf(c),1);t.players.push(c)}}})}
 
 const TIERS=[
-{id:'shoe',name:'Shoestring',amt:700000,desc:'Riot stipend, Ascension prize money and one energy drink sponsor. Every dollar matters.'},
-{id:'backed',name:'Investor-backed',amt:1200000,desc:'Stipend plus a real seed round. A solid five, a coach and room for an academy.'},
-{id:'whale',name:'Whale owner',amt:2000000,desc:'Your owner just sold a crypto exchange. Sign who you want, within reason.'}];
+{id:'shoe',name:'Shoestring',amt:500000,desc:'Riot stipend, Ascension prize money and one energy drink sponsor. Every dollar matters.'},
+{id:'backed',name:'Investor-backed',amt:700000,desc:'Stipend plus a real seed round. A solid five, a coach and room for an academy.'},
+{id:'whale',name:'Whale owner',amt:1000000,desc:'Your owner just sold a crypto exchange. Sign who you want, within reason.'}];
 const PERKS=[
 {id:'bootcamp',name:'Seoul bootcamp',cost:90000,desc:'Two weeks scrimming Pacific teams. +15 chemistry now and +1 form for every player.'},
 {id:'pcs',name:'New 540Hz rigs',cost:35000,desc:'Fresh PCs and peripherals. A small boost to team rating on every map.'},
@@ -1177,8 +1182,23 @@ const rcls=v=>v>=86?'r-hot':v>=80?'r-good':'r-meh';
 /* ---------- state ---------- */
 const WORDMARK=`<svg class="wmk" viewBox="-2 -2 486 106" role="img" aria-label="LosersQ"><path d="M5 5V95H44 M74 41H96L109 54V82L96 95H74L61 82V54Z M173 41H141L131 51V58L139 66H165L173 74V85L163 95H131 M241 68V54L228 41H208L195 54V82L208 95H241M195 68H241 M263 100V41M263 60L282 41H302 M361 41H329L319 51V58L327 66H353L361 74V85L351 95H319 M410 5H450L475 30V70L450 95H410L385 70V30Z" fill="none" stroke="currentColor" stroke-width="10" stroke-linejoin="miter" stroke-linecap="butt"/><path d="M446 63L480 97" stroke="#ff4655" stroke-width="11"/></svg>`;
 const SAVE='losersq.v1';let S=null;let liveTimer=null;let vetoTimer=null;let confirmReset=false;
-function save(){try{localStorage.setItem(SAVE,JSON.stringify(S))}catch(e){}}
-function load(){try{const t=localStorage.getItem(SAVE);return t?JSON.parse(t):null}catch(e){return null}}
+/* Up to four save slots. Slot 1 keeps the original key so existing saves carry over. */
+const SLOTS_N=4;let SLOT=1;try{SLOT=Math.min(SLOTS_N,Math.max(1,+localStorage.getItem('losersq.slot')||1))}catch(e){}
+let SHOW_SAVES=false,DEL_SLOT=0;
+function slotKey(n){return n===1?SAVE:SAVE+'.s'+n}
+function save(){try{if(S&&S.view!=='intro')S.savedAt=Date.now();localStorage.setItem(slotKey(SLOT),JSON.stringify(S));localStorage.setItem('losersq.slot',String(SLOT))}catch(e){}}
+function load(){try{const t=localStorage.getItem(slotKey(SLOT));return t?JSON.parse(t):null}catch(e){return null}}
+function slotInfo(n){try{const t=localStorage.getItem(slotKey(n));if(!t)return null;const x=JSON.parse(t);if(!x||!x.org||!x.org.name||x.view==='intro')return null;
+  const st=x.stageIdx>=3?'Season complete':(STAGES[Math.min(x.stageIdx||0,2)]||{}).name+(x.stage?' · in progress':' · preseason');
+  return{name:x.org.name,tag:x.org.tag,stage:st,budget:x.budget,roster:(x.roster||[]).length,t:x.savedAt||0}}catch(e){return null}}
+function savesView(){const when=t=>t?new Date(t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+  return`<section class="saves"><div><span class="eyebrow">Careers</span><h2>Save slots</h2><p class="mute">Up to four careers. Each one saves automatically in this browser.</p></div>
+  <div class="slotgrid">${Array.from({length:SLOTS_N},(_,i)=>{const n=i+1,x=slotInfo(n),cur=n===SLOT;
+    return`<article class="slot ${cur?'cur':''} ${x?'':'empty'}"><div class="slothead"><span class="hnum">SLOT ${n}</span>${cur?'<span class="chip ok">Current</span>':''}</div>
+    ${x?`<h3>${esc(x.name)}</h3><p class="note">${esc(x.tag)} · ${esc(x.stage)}</p><p class="note">${x.roster} players · ${money(x.budget||0)}${x.t?' · '+when(x.t):''}</p>
+      <div class="row" style="gap:8px;margin-top:auto">${cur?`<button class="btn sm primary" onclick="act.slotClose()">Resume</button>`:`<button class="btn sm primary" onclick="act.slotOpen(${n})">Load</button>`}<button class="btn sm ghost danger" onclick="act.slotDel(${n})">${DEL_SLOT===n?'Click again to delete':'Delete'}</button></div>`
+     :`<h3 class="mute">Empty</h3><p class="note">Start a new career in this slot.</p><div class="row" style="margin-top:auto"><button class="btn sm" onclick="act.slotNew(${n})">New career</button></div>`}</article>`}).join('')}</div>
+  ${slotInfo(SLOT)?'':`<p class="note">Slot ${SLOT} is open. Close this screen to set up the org.</p>`}<div><button class="btn ghost" onclick="act.slotClose()">← Back</button></div></section>`}
 function fresh(){const o=fresh0();o.teams=initialTeams();o.fa=initialFA(o.teams);return o}
 function fresh0(){return{view:'intro',org:{name:'',tag:'',color:COLORS[0]},tier:null,budget:0,roster:[],bench:null,perks:{},coach:'none',focus:[],style:'Default',chem:35,fa:null,news:[],rv:2,sponsors:[],sOffers:[],fame:15,sponsorIncome:0,ledger:[],mail:[],chats:{},chatSeq:0,weekN:0,desk:{open:['mail'],focus:'mail',pos:{},mf:'inbox',msel:null,csel:null,toast:null},mp:'All',careWeek:{},staff:[],staffMarket:clone(STAFF),neg:{},nego:null,sf:'all',teams:null,stageIdx:0,stage:null,history:[],points:{},prize:0,stats:{},log:[],match:null,started:false,notice:null,mf:'All',lv:null,champions:null,speed:380}}
 function addLog(t){S.log.unshift({w:wk(),t});S.log=S.log.slice(0,40)}
@@ -1556,6 +1576,11 @@ VCT Americas League Operations`);
   finish(){finishUserMatch();window.scrollTo(0,0)},
   selR(i){if(S.match&&S.match.live){S.match.live.sel=i;save();render()}},
   lv(k){S.lv=k;save();render()},
+  saves(){SHOW_SAVES=true;DEL_SLOT=0;render();window.scrollTo(0,0)},
+  slotClose(){SHOW_SAVES=false;DEL_SLOT=0;render()},
+  slotOpen(n){clearInterval(liveTimer);save();SLOT=n;S=load()||fresh();try{localStorage.setItem('losersq.slot',String(n))}catch(e){}SHOW_SAVES=false;DEL_SLOT=0;try{migrateNow()}catch(e){}render();window.scrollTo(0,0)},
+  slotNew(n){clearInterval(liveTimer);save();SLOT=n;S=fresh();save();SHOW_SAVES=false;DEL_SLOT=0;render();window.scrollTo(0,0)},
+  slotDel(n){if(DEL_SLOT!==n){DEL_SLOT=n;render();setTimeout(()=>{if(DEL_SLOT===n){DEL_SLOT=0;render()}},4000);return}try{localStorage.removeItem(slotKey(n))}catch(e){}DEL_SLOT=0;if(n===SLOT){clearInterval(liveTimer);S=fresh();save()}render()},
   reset(){if(!confirmReset){confirmReset=true;render();setTimeout(()=>{confirmReset=false;render()},4000);return}clearInterval(liveTimer);S=fresh();confirmReset=false;save();render()}
 };
 
@@ -1563,10 +1588,10 @@ VCT Americas League Operations`);
 function header(){
   const inGame=S.view!=='intro';const nUn=unreadMail()+unreadChat();const tabs=[['hq','HQ'],['team','Team'],['desk','Office'+(nUn?` <span class="badge">${nUn}</span>`:'')],['schedule','Schedule'],['market','Market'],['staff','Staff'],['league','League'],['guide','Guide']];
   const stl=S.stageIdx>=3?'Season over':S.stage?STAGES[S.stageIdx].name:(S.started?'Transfer window':'Preseason');
-  return`<header class="bar"><div class="wrap bar-in"><div class="logo" aria-label="LosersQ">${WORDMARK}</div>
+  return`<header class="bar"><div class="wrap bar-in"><div class="logo" aria-label="LosersQ">${WORDMARK}</div><button class="btn sm ghost savesbtn" ${S.match?'disabled title="Finish the match first"':''} onclick="act.saves()">Saves · Slot ${SLOT}</button>
   ${inGame?`<div class="org"><img class="tlogo you" src="wall/emblem.png" alt="">${esc(S.org.name)} <b>${esc(S.org.tag)}</b></div>
   <div class="kvs"><div class="kv"><span>Budget</span><b>${money(S.budget)}</b></div><div class="kv"><span>Chemistry</span><b>${Math.round(S.chem)}</b></div><div class="kv"><span>Phase</span><b>${stl}</b></div><div class="kv"><span>Followers</span><b>${fmtFans(S.fame)}</b></div><div class="kv" title="Championship Points: earned from your placement in each stage. The season leaders qualify for Champions."><span>Champ. points</span><b>${S.points.you||0}</b></div></div>`:''}</div>
-  ${inGame?`<div class="wrap"><nav class="tabs">${S.match?`<button aria-current="true">Match day</button>`:tabs.map(([k,l])=>`<button aria-current="${S.view===k}" onclick="act.go('${k}')">${l}</button>`).join('')}</nav></div>`:''}</header>`;
+  ${inGame&&!SHOW_SAVES?`<div class="wrap"><nav class="tabs">${S.match?`<button aria-current="true">Match day</button>`:tabs.map(([k,l])=>`<button aria-current="${S.view===k}" onclick="act.go('${k}')">${l}</button>`).join('')}</nav></div>`:''}</header>`;
 }
 function vIntro(){
   const ok=S.org.name.trim()&&S.org.tag.trim()&&S.tier;
@@ -2497,7 +2522,7 @@ let TOAST_K=null,TOAST_T=0;function toastAnim(k){if(k!==TOAST_K){TOAST_K=k;TOAST
 function render(){if(S)syncPool();
   if(S.view!=='desk'||S.match)musStop();
   document.documentElement.style.setProperty('--you',S.org.color||COLORS[0]);document.documentElement.dataset.mode=S.theme||'dark';
-  const v=S.view==='intro'?vIntro():S.match?vMatch():S.view==='market'?vMarket():S.view==='facilities'||S.view==='guide'?vGuide():S.view==='staff'?vStaff():S.view==='schedule'?vSchedule():S.view==='team'?vTeam():S.view==='sponsors'?vDesk():S.view==='desk'?vDesk():S.view==='league'?vLeague():vHQ();
+  const v=SHOW_SAVES?savesView():S.view==='intro'?vIntro():S.match?vMatch():S.view==='market'?vMarket():S.view==='facilities'||S.view==='guide'?vGuide():S.view==='staff'?vStaff():S.view==='schedule'?vSchedule():S.view==='team'?vTeam():S.view==='sponsors'?vDesk():S.view==='desk'?vDesk():S.view==='league'?vLeague():vHQ();
   const a=document.activeElement;const fid=a&&a.id;const sel=a&&a.selectionStart;
   document.getElementById('app').innerHTML=header()+`<main class="wrap">${v}</main>${S.nego?negoModal():''}<footer><div class="wrap"><span>An Aspect game. Rosters from VLR.gg VCT 2026 Americas event pages. Ratings, map pools and metas are sim estimates.</span>${S.view!=='intro'&&S.stageIdx<3?`<button class="btn sm ghost danger" onclick="act.reset()">${confirmReset?'Click again to wipe this career':'New career'}</button>`:''}</div></footer>`;
   {const bb=document.getElementById('bubbles');if(bb)bb.scrollTop=bb.scrollHeight}
@@ -2516,7 +2541,7 @@ try{gateUpdate();if(standalone())llmLoad()}catch(e){}
   const next=()=>{i++;if(i>=seq.length){end();return}clearTimeout(t);d.style.background=seq[i].bg;d.querySelector('span').style.color='#ece8df';v.src=seq[i].src;v.play().catch(()=>{});t=setTimeout(next,seq[i].max)};
   v.onended=()=>setTimeout(next,i===seq.length-1?500:150);v.onerror=next;
   d.onclick=end;document.addEventListener('keydown',end,{once:true});document.body.appendChild(d);next()})();
-(function migrate(){(S.mail||[]).forEach(x=>x.thread.forEach(t=>{t.body=String(t.body).replace(/\n\+1 \(\d{3}\) 555-\d{4}(?=\n)/g,'')}));if(S.fanMs==null&&S.view!=='intro'&&!S.fanInit){const n=fanCount(S.fame);S.fanMs=FAN_MS.filter(x=>x<=n).pop()||0}if(S.perks&&S.perks.bteam&&!(S.bteam||[]).length&&S.fa)signAcademy();if(S.chats&&S.chats.owner){S.chats.owner.name=OWNER.name;S.chats.owner.sub=OWNER.sub}(S.notis||[]).forEach(n=>{if(n.title==='Dana Whitlock')n.title=OWNER.name});if(S.staffMarket){STAFF.forEach(x=>{if(!S.staffMarket.some(y=>y.id===x.id)&&!(S.staff||[]).some(y=>y.id===x.id))S.staffMarket.push(clone(x))})}syncPool();(S.teams||[]).forEach(t=>{if(VLRMAP[t.id]&&t.vlr!==2){t.maps=clone(VLRMAP[t.id]);t.vlr=2}});if(S.sponsors)S.sponsors=S.sponsors.filter(d=>spT(d.id));if(S.sOffers)S.sOffers=S.sOffers.filter(o=>spT(o.id));(S.mail||[]).forEach(m=>{if(m.act&&m.act.type==='sponsor'&&!spT(m.act.sid)){m.done=true;m.expired=true}});if(!S.blocked)S.blocked={mail:{},chat:{}};if(S.desk)S.desk.booting=false;if(!S.notis)S.notis=[];if(S.desk){S.desk.flyout=null;S.desk.busy=false}Object.values(S.chats||{}).forEach(c=>{if(c.typing){c.typing=false;if(!c.pending&&c.msgs.length)c.pending=null}});if(S.desk&&S.desk.ipos)delete S.desk.ipos.browser;if(S.desk&&S.desk.open)S.desk.open=S.desk.open.filter(x=>x!=='browser');if(S.rv!==2){const mine=new Set(S.roster.map(p=>p.id));S.teams=initialTeams();S.fa=initialFA(S.teams).filter(p=>!mine.has(p.id));S.news=[];S.neg={};
+function migrateNow(){(S.mail||[]).forEach(x=>x.thread.forEach(t=>{t.body=String(t.body).replace(/\n\+1 \(\d{3}\) 555-\d{4}(?=\n)/g,'')}));if(S.fanMs==null&&S.view!=='intro'&&!S.fanInit){const n=fanCount(S.fame);S.fanMs=FAN_MS.filter(x=>x<=n).pop()||0}if(S.perks&&S.perks.bteam&&!(S.bteam||[]).length&&S.fa)signAcademy();if(S.chats&&S.chats.owner){S.chats.owner.name=OWNER.name;S.chats.owner.sub=OWNER.sub}(S.notis||[]).forEach(n=>{if(n.title==='Dana Whitlock')n.title=OWNER.name});if(S.staffMarket){STAFF.forEach(x=>{if(!S.staffMarket.some(y=>y.id===x.id)&&!(S.staff||[]).some(y=>y.id===x.id))S.staffMarket.push(clone(x))})}syncPool();(S.teams||[]).forEach(t=>{if(VLRMAP[t.id]&&t.vlr!==2){t.maps=clone(VLRMAP[t.id]);t.vlr=2}});if(S.sponsors)S.sponsors=S.sponsors.filter(d=>spT(d.id));if(S.sOffers)S.sOffers=S.sOffers.filter(o=>spT(o.id));(S.mail||[]).forEach(m=>{if(m.act&&m.act.type==='sponsor'&&!spT(m.act.sid)){m.done=true;m.expired=true}});if(!S.blocked)S.blocked={mail:{},chat:{}};if(S.desk)S.desk.booting=false;if(!S.notis)S.notis=[];if(S.desk){S.desk.flyout=null;S.desk.busy=false}Object.values(S.chats||{}).forEach(c=>{if(c.typing){c.typing=false;if(!c.pending&&c.msgs.length)c.pending=null}});if(S.desk&&S.desk.ipos)delete S.desk.ipos.browser;if(S.desk&&S.desk.open)S.desk.open=S.desk.open.filter(x=>x!=='browser');if(S.rv!==2){const mine=new Set(S.roster.map(p=>p.id));S.teams=initialTeams();S.fa=initialFA(S.teams).filter(p=>!mine.has(p.id));S.news=[];S.neg={};
    for(let i=1;i<=Math.min(S.stageIdx,2);i++){openWindow(STAGES[i].key);if(S.stageIdx>i||S.stage)fillRosters(STAGES[i].key)}S.rv=2}
   if(!S.ledger)S.ledger=S.view==='intro'?[]:[{t:'Opening',cat:'Owner',desc:'Opening balance',amt:S.budget,bal:S.budget}];
   if(!S.mail)S.mail=[];if(!S.chats)S.chats={};if(S.chatSeq==null)S.chatSeq=0;if(!S.desk)S.desk={open:['mail'],focus:'mail',pos:{},mf:'inbox',msel:null,csel:null,toast:null};S.desk.toast=null;
@@ -2524,7 +2549,8 @@ try{gateUpdate();if(standalone())llmLoad()}catch(e){}
   if(S.mp==null)S.mp='All';if(!S.staff)S.staff=[];if(!S.staffMarket)S.staffMarket=clone(STAFF);if(!S.neg)S.neg={};S.nego=null;
   const onTeam=owned();S.fa=S.fa.filter(p=>!onTeam.has(p.id));
   S.roster.forEach(p=>{if(!p.contract)p.contract={salary:p.salary,years:1}});if(!S.careWeek)S.careWeek={};const have=new Set([...S.fa,...S.roster].map(p=>p.id));S.teams.forEach(t=>t.players.forEach(p=>have.add(p.id)));
-  S.fa=S.fa.filter(p=>p.id!=='bcj');[...S.fa,...S.roster].forEach(p=>{const m=MARKET.find(x=>x.id===p.id);if(m&&m.pool!=='VCT FA'){p.role=m.role;p.agents=m.agents.slice();p.note=m.note;p.igl=m.igl}});[...S.fa,...S.roster].forEach(p=>{ensureCond(p);if(!p.pool){const m=MARKET.find(x=>x.id===p.id);p.pool=m?m.pool:'VCT FA'}})})();
+  S.fa=S.fa.filter(p=>p.id!=='bcj');[...S.fa,...S.roster].forEach(p=>{const m=MARKET.find(x=>x.id===p.id);if(m&&m.pool!=='VCT FA'){p.role=m.role;p.agents=m.agents.slice();p.note=m.note;p.igl=m.igl}});[...S.fa,...S.roster].forEach(p=>{ensureCond(p);if(!p.pool){const m=MARKET.find(x=>x.id===p.id);p.pool=m?m.pool:'VCT FA'}})}
+migrateNow();
 if(S.match&&S.match.step==='live'&&S.match.live){S.match.live.shown=S.match.live.r.rounds.length;S.match.step='live';endMap()}
 render();
 </script>

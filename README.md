@@ -1,6 +1,6 @@
 # LosersQ
 
-A VCT Americas 2026 manager sim by **Aspect**.
+A VCT Americas 2026 manager sim by **Jucundus**.
 
 You beat ENVY at Ascension and took their slot. Build the roster, run the office, handle sponsors, scrim, veto, and try to make Champions.
 
@@ -15,7 +15,7 @@ Characters are voiced by Qwen 2.5 1.5B running locally in the browser through We
 
 ## Credits
 
-- Game: Aspect
+- Game: Jucundus
 - Music: NCS (NoCopyrightSounds)
 - Rosters and match data: VLR.gg, Liquipedia, THESPIKE.GG
 - Team names and logos belong to their owners. LosersQ is an unofficial fan project and is not affiliated with Riot Games.

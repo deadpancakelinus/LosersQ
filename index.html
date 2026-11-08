@@ -353,6 +353,7 @@ button.clock{background:none;border:0;color:inherit;font:inherit;cursor:pointer}
 .tlogo.lg{width:44px;height:44px;vertical-align:middle;margin-right:12px}.tlh{display:flex;align-items:center}
 .av.tav{background:#151b26;padding:5px}.av.emb{background:none;padding:2px}.av.emb img{width:100%;height:100%;object-fit:contain}.av.tav .tlogo{width:100%;height:100%;margin:0;vertical-align:0}
 :root[data-mode="light"] .tlogo:not(.you){background:#151b26;border-radius:4px;padding:2px}:root[data-mode="light"] .av.tav .tlogo{background:none;padding:0}
+.prebtn{display:inline-flex;align-items:center;gap:2px}.prebtn .x{background:none;border:0;color:var(--mute);font-size:11px;cursor:pointer;padding:2px 4px}.prebtn .x:hover{color:var(--fg)}
 .chip.perk{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--fg);margin-top:4px;display:inline-flex;gap:4px;font-size:11px}
 .vn.coach{border-left:3px solid #ff9f43}
 .tog{width:40px;height:20px;border-radius:10px;border:1px solid var(--mute);background:none;position:relative;padding:0;flex:none}.tog i{position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:var(--mute);transition:left .15s}
@@ -1240,6 +1241,28 @@ function autoComp(players,map){
   if(!out.some(a=>ROLE_OF[a]==='Controller')){let best=-1,bi=-1;players.forEach((p,i)=>{const c=p.agents.find(x=>ROLE_OF[x]==='Controller'&&!used.has(x));if(c&&ROLE_OF[out[i]]==='Duelist'&&best<0){best=1;bi=i;out[i]=c}})}
   return out;
 }
+
+/* ---------- Comp presets: Default (best possible from the players' pools), your saved comps, and analyst counter comps ---------- */
+const COUNTER={Sova:['Cypher','Killjoy','Vyse','Deadlock'],Fade:['Cypher','Chamber','Deadlock','Reyna'],Breach:['Killjoy','Vyse','Chamber'],'KAY/O':['Killjoy','Cypher','Vyse','Gekko','Astra'],Raze:['Killjoy','Cypher','Vyse','Sage'],Skye:['Cypher','Chamber'],Gekko:['Killjoy','Vyse'],Tejo:['Killjoy','Cypher','Vyse','Deadlock'],
+ Viper:['Jett','Neon','Raze'],Brimstone:['Sova','Fade'],Omen:['Sova','Chamber'],Astra:['Breach','Jett'],Harbor:['Neon','Jett'],Clove:['Sova','Fade'],
+ Killjoy:['Raze','Neon','Jett','Yoru'],Cypher:['Jett','Neon','Yoru','Reyna'],Sage:['Raze','Neon','Breach'],Vyse:['Jett','Raze','Neon','Waylay'],Deadlock:['Neon','Raze','Iso'],Chamber:['Jett','Reyna','Iso'],Veto:['Sova','Fade','Tejo'],
+ Jett:['Omen','Astra','Viper'],Neon:['Viper','Harbor','Brimstone'],Reyna:['Sage','Clove'],Yoru:['Omen','Astra'],Phoenix:['Sova','Fade'],Iso:['Chamber','Deadlock'],Waylay:['Killjoy','Cypher']};
+function counterEdge(a,b){if(!a||!b)return 0;let x=0;a.forEach(p=>b.forEach(q=>{if((COUNTER[p]||[]).includes(q))x+=.3;if((COUNTER[q]||[]).includes(p))x-=.3}));return clamp(x,-1.5,1.5)}
+function bestComp(pl,map,score){const cand=pl.map(p=>{const c=[...new Set([...(p.agents||[]).slice(0,6)])];return c.length?c:AGENTS[p.role].slice(0,3)});
+ let best=null,bv=-1e9;const cur=[];const used=new Set();const go=i=>{if(i===pl.length){const v=score?score(cur):compScore(pl,map,cur);if(v>bv){bv=v;best=cur.slice()}return}
+  for(const a of cand[i]){if(used.has(a))continue;used.add(a);cur.push(a);go(i+1);cur.pop();used.delete(a)}};go(0);return best||autoComp(pl,map)}
+const pkey=p=>p.id||p.name;
+function compsOf(map){S.comps=S.comps||{};return S.comps[map]=S.comps[map]||[]}
+function compFromPreset(c,st){const ag=st.map(p=>c.ag[pkey(p)]||null);const used=new Set();ag.forEach((a,i)=>{if(!a||used.has(a))ag[i]=null;else used.add(a)});
+ st.forEach((p,i)=>{if(!ag[i]){const a=[...p.agents,...AGENTS[p.role]].find(x=>!used.has(x));ag[i]=a;used.add(a)}});return ag}
+function analystPresets(M,map){M.anPre=M.anPre||{};if(M.anPre[map])return M.anPre[map];const st=starters(),o=team(M.opp);if(!o)return[];
+ const an=(S.staff||[]).filter(x=>x.slot==='an').sort((a,b)=>b.stars-a.stars).slice(0,2);const real=autoComp(o.players,map);const out=[];
+ an.forEach((x,k)=>{const sure=hasPerk('heatmap')||rnd()<clamp(.45+x.stars*.12,.5,.97);
+  const pred=sure?real:autoComp(o.players.map(p=>Object.assign({},p,{agents:shuffle([...p.agents])})),map);
+  const prev=out[0]&&out[0].ag;const ag=bestComp(st,map,c=>compScore(st,map,c)+counterEdge(c,pred)*(1.4+x.stars*.15)-(prev&&c.every((a,i)=>a===prev[i])?5:0));
+  out.push({id:'an'+k,name:`${x.name.split(' ')[0]}'s counter`,by:x.name,pred,ag})});
+ return M.anPre[map]=out}
+function goComp(map){const st=starters();const id=(S.compGo||{})[map];const c=id&&compsOf(map).find(x=>x.id===id);return c?compFromPreset(c,st):bestComp(st,map)}
 function styleEdge(a,b){return BEATS[a]===b?1.5:BEATS[b]===a?-1.5:0}
 function strength(T,map,ag,style,oStyle){
   let s=T.players.reduce((x,p)=>x+ovr(p)+(p.form||0)*.5+(T.user?condMod(p):0),0)/T.players.length;
@@ -1271,7 +1294,7 @@ function roundEvent(W,L,sw,sl,agW,map,r,wAtk){
 }
 function aAttacks(r,startA){const flip=r<12?0:r<24?1:(r-24)%2;return startA!==!!flip}
 function simMap(A,B,map,o){
-  const sA=strength(A,map,o.agA,o.styleA,o.styleB)+(rnd()-.5)*5+(o.edgeA||0),sB=strength(B,map,o.agB,o.styleB,o.styleA)+(rnd()-.5)*5+(o.edgeB||0);
+  const sA=strength(A,map,o.agA,o.styleA,o.styleB)+(rnd()-.5)*5+(o.edgeA||0)+counterEdge(o.agA,o.agB)/2,sB=strength(B,map,o.agB,o.styleB,o.styleA)+(rnd()-.5)*5+(o.edgeB||0)+counterEdge(o.agB,o.agA)/2;
   const base=1/(1+Math.exp(-(sA-sB)/8));
   const stA=A.players.map(()=>({k:0,d:0,a:0})),stB=B.players.map(()=>({k:0,d:0,a:0}));
   let a=0,b=0,r=0,sa=0,sb=0,pis=null;const rounds=[];
@@ -1573,17 +1596,21 @@ VCT Americas League Operations`);
     let g=0;while(vetoTurn()&&g++<20){const t=vetoTurn();doVeto(t.who==='you'?aiVeto(u,o,vetoRem(),t.act):aiVeto(o,u,vetoRem(),t.act))}
     if(M.cur==null)M.cur=0;let k=0;
     while(M.step!=='done'&&k++<12){if(M.step==='mapdone'){M.cur++;M.live=null;M.ag=null}
-      if(!M.ag)M.ag=autoComp(starters(),curMap());if(!M.style)M.style=S.style;lockIn();clearInterval(liveTimer);M.live.shown=M.live.r.rounds.length;endMap()}
+      if(!M.ag)M.ag=goComp(curMap());if(!M.style)M.style=S.style;lockIn();clearInterval(liveTimer);M.live.shown=M.live.r.rounds.length;endMap()}
     save();render();window.scrollTo(0,0)},
   veto(m){const t=vetoTurn();if(t&&t.who==='you')doVeto(m)},
-  toAgents(){S.match.step='agents';S.match.ag=autoComp(starters(),curMap());save();render()},
-  setAg(i,a){const M=S.match;const j=M.ag.indexOf(a);if(j>=0&&j!==i)M.ag[j]=M.ag[i];M.ag[i]=a;save();render()},
-  autoAg(){S.match.ag=autoComp(starters(),curMap());save();render()},
+  toAgents(){S.match.step='agents';S.match.ag=goComp(curMap());S.match.preset=(S.compGo||{})[curMap()]||'def';save();render()},
+  setAg(i,a){const M=S.match;M.preset=null;const j=M.ag.indexOf(a);if(j>=0&&j!==i)M.ag[j]=M.ag[i];M.ag[i]=a;save();render()},
+  autoAg(){S.match.ag=bestComp(starters(),curMap());S.match.preset='def';save();render()},
+  usePre(id){const M=S.match,map=curMap(),st=starters();if(id==='def')M.ag=bestComp(st,map);else if(id.startsWith('an')){const a=analystPresets(M,map).find(x=>x.id===id);if(a)M.ag=a.ag.slice()}else{const c=compsOf(map).find(x=>x.id===id);if(c)M.ag=compFromPreset(c,st)}M.preset=id;save();render()},
+  savePre(){const M=S.match,map=curMap(),L=compsOf(map);if(L.length>=3)return;const ag={};starters().forEach((p,i)=>ag[pkey(p)]=M.ag[i]);let n=1;while(L.some(x=>x.name==='Comp '+n))n++;const c={id:'c'+Date.now().toString(36),name:'Comp '+n,ag};L.push(c);M.preset=c.id;save();render()},
+  delPre(id){const map=curMap();S.comps[map]=compsOf(map).filter(x=>x.id!==id);if((S.compGo||{})[map]===id)delete S.compGo[map];save();render()},
+  goPre(id){const map=curMap();S.compGo=S.compGo||{};if(id==='def'||S.compGo[map]===id)delete S.compGo[map];else S.compGo[map]=id;save();render()},
   mstyle(s){S.match.style=s;save();render()},
   lock(){lockIn()},
   skip(){const L=S.match.live;clearInterval(liveTimer);L.shown=L.r.rounds.length;endMap()},
   speed(v){S.speed=v;save();if(S.match&&S.match.step==='live')startLive();render()},
-  nextMap(){const M=S.match;M.cur++;M.live=null;M.ag=autoComp(starters(),curMap());M.step='agents';save();render();window.scrollTo(0,0)},
+  nextMap(){const M=S.match;M.cur++;M.live=null;M.ag=goComp(curMap());M.preset=(S.compGo||{})[curMap()]||'def';M.step='agents';save();render();window.scrollTo(0,0)},
   finish(){finishUserMatch();window.scrollTo(0,0)},
   selR(i){if(S.match&&S.match.live){S.match.live.sel=i;save();render()}},
   lv(k){S.lv=k;save();render()},
@@ -2463,7 +2490,7 @@ function vGuide(){const sec=(t,b)=>`<div class="panel stack gd"><h3>${t}</h3>${b
   ${sec('Match day',`<p>Each series starts with the map veto, then you pick five agents and a playstyle for every map. Map rating comes from practice focus, VOD familiarity and your analyst.</p><p>The map pool follows the real 2026 rotation: Kickoff ${POOLS.kickoff.join(', ')}; Stage 1 ${POOLS.s1.join(', ')}; Stage 2 ${POOLS.s2.join(', ')}.</p><p>Playstyles counter each other in a loop: ${Object.entries(BEATS).map(([a,b])=>`<b>${a}</b> beats ${b}`).join(', ')}.</p>`)}
   ${sec('Opposing coaches',`<p>Rival coaches veto around their own team first: they ban their weakest maps and pick their best, using each team's real 2026 VCT Americas map results. Then they study yours. Maps you keep picking get banned or counter-prepped (up to +1.5 for them), and they stop wasting bans on maps you always ban yourself.</p><p>Lean on one playstyle and they'll start bringing its counter. The <b>Coach read</b> box in the scouting report and VOD Review shows what they've figured out.</p>`)}
   ${sec('Scrims',`<p>Book scrims in Messages through the LFG chat or a DM. Scrims raise your familiarity on that map, and the other team's too. Tier-1 teams also take notes on you: +0.3 on that map for every scrim, up to +1.2 when you meet them.</p><p>Your B team, set up on the Schedule tab, gives better macro, but scrimming it builds less passion than tier-1 or tier-2 opponents. Losing to your academy is a good sign: the main roster learns more from those sets.</p>`)}
-  ${sec('Money',`<p>Everything runs through Budget.xlsx in the Office: salaries, staff, sponsors, prize money and win bonuses. Contracts last one to four years. Players and staff can accept, counter or walk away.</p><p>Every staff member also has a perk from their résumé that triggers in a specific situation: after wins or losses, in scrims, at the start of a stage, when you sign someone, or when you run a bootcamp. Hover the ⚡ tag to see it.</p><p>Staff: an analyst messages you a scouting report before each match: weak maps, a veto plan, the counter style and a comp. Better analysts give more detail and are more accurate. An assistant coach makes every scrim and ranked session worth more. A performance coach checks in on routines for you every week.</p><p>Sponsors pay weekly, and some add bonuses or obligations. Better brands rarely reach out first, so you'll have to pitch them.</p>`)}
+  ${sec('Money',`<p>Everything runs through Budget.xlsx in the Office: salaries, staff, sponsors, prize money and win bonuses. Contracts last one to four years. Players and staff can accept, counter or walk away.</p><p>Agent select has comp presets per map: Default is the best comp from your players' pools, you can save up to three of your own and star one to load first, and each analyst adds a counter comp built against what they expect the opponent to run. Agents counter each other, so the matchup matters.</p><p>Every staff member also has a perk from their résumé that triggers in a specific situation: after wins or losses, in scrims, at the start of a stage, when you sign someone, or when you run a bootcamp. Hover the ⚡ tag to see it.</p><p>Staff: an analyst messages you a scouting report before each match: weak maps, a veto plan, the counter style and a comp. Better analysts give more detail and are more accurate. An assistant coach makes every scrim and ranked session worth more. A performance coach checks in on routines for you every week.</p><p>Sponsors pay weekly, and some add bonuses or obligations. Better brands rarely reach out first, so you'll have to pitch them.</p>`)}
   </div></div>`}
 function stagePath(){return`<div class="path">${[...STAGES.map(s=>s.name),'Champions'].map((n,i)=>`<div class="step ${i<S.stageIdx?'done':i===S.stageIdx?'now':''}"><b>${n}</b><span class="mute">${i<3?STAGES[i].event:'Shanghai'}</span></div>`).join('')}</div>`}
 function careCost(c){return Math.round(c.cost*(1-staffFx().careDisc))}
@@ -2563,6 +2590,11 @@ function vMatch(){
      <select id="ag${i}" aria-label="Agent for ${esc(p.name)}" onchange="act.setAg(${i},this.value)">${Object.entries(AGENTS).map(([r,list])=>`<optgroup label="${r}">${list.map(a=>`<option value="${a}" ${M.ag[i]===a?'selected':''}>${p.agents.includes(a)?'★ ':''}${a}</option>`).join('')}</optgroup>`).join('')}</select>
      <span class="role r-${ROLE_OF[M.ag[i]]}">${ROLE_OF[M.ag[i]]}</span></div>`).join('')}</div>
     <div class="row" style="gap:6px">${['Duelist','Initiator','Controller','Sentinel'].map(r=>`<span class="chip ${cnt[r]?((r==='Duelist'&&cnt[r]>2)?'bad':'ok'):'bad'}">${r} ${cnt[r]||0}</span>`).join('')}<span class="chip ${cs>=1?'ok':cs<0?'bad':''}">Comp ${cs>=0?'+':''}${cs.toFixed(1)}</span></div></div>
+    <div class="panel stack"><div class="row" style="justify-content:space-between"><h3>Comp presets on ${map}</h3>${compsOf(map).length<3?`<button class="btn sm" onclick="act.savePre()">Save current as preset</button>`:'<span class="note">3 of 3 saved</span>'}</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap">${(()=>{const go=(S.compGo||{})[map];const b=(id,lab,extra='',tip='')=>`<span class="prebtn ${M.preset===id?'sel':''}"><button class="chip ${M.preset===id?'sel':''}" title="${esc(tip)}" onclick="act.usePre('${id}')">${lab}</button>${extra}</span>`;
+      return b('def','Default'+(go?'':' ★'),'','Best comp the game can build from your players\' agent pools')+compsOf(map).map(c=>b(c.id,esc(c.name)+(go===c.id?' ★':''),`<button class="x" title="Use as go-to on ${map}" onclick="act.goPre('${c.id}')">${go===c.id?'unstar':'star'}</button><button class="x" title="Delete" onclick="act.delPre('${c.id}')">✕</button>`)).join('')+
+      analystPresets(M,map).map(a=>b(a.id,'🔎 '+esc(a.name),'',`${a.by} expects ${o.tag}: ${a.pred.join(', ')}`)).join('')})()}</div>
+    <p class="note">★ marks the comp that loads first on ${map}. Default is the strongest comp the game can build from your players' pools.${analystPresets(M,map).length?` Analyst comps are built to counter what they expect ${esc(o.tag)} to run: ${analystPresets(M,map).map(a=>`<b>${esc(a.by)}</b> expects ${a.pred.join(', ')}`).join('; ')}.`:' Hire an analyst to get counter comps for each opponent.'} Counter matchup vs that comp: <b>${(()=>{const p=analystPresets(M,map)[0];const v=counterEdge(M.ag,p?p.pred:autoComp(o.players,map));return p?(v>=0?'+':'')+v.toFixed(1):'unknown'})()}</b></p></div>
     <div class="panel stack"><h3>Playstyle on ${map}</h3><p class="note">${esc(o.tag)} usually plays ${o.style}.</p><div class="styles">${Object.entries(STYLES).map(([k,d])=>`<button class="style" aria-pressed="${M.style===k}" onclick="act.mstyle('${k}')"><b>${k}</b>${d}</button>`).join('')}</div></div>
     <div><button class="btn primary big" onclick="act.lock()">Lock in and play ${map} →</button></div>`}
   else{const L=M.live,r=L.r,n=L.shown,cr=r.rounds[n-1]||{a:0,b:0};const done=n>=r.rounds.length;const st=starters();

@@ -540,6 +540,7 @@ nav.tabs button{font-family:var(--f-display);letter-spacing:.06em;text-transform
 .hfig.coach::after{opacity:0}.hfig.coach::before{opacity:.5}
 .hcard:hover .hfig{transform:translateY(-3px);transition:transform .25s}
 .hcard.vacant .hfig img{filter:brightness(.6)}
+input[type="checkbox"]{flex:none;width:18px;height:18px;padding:0;margin:0;border-radius:3px;accent-color:var(--accent);cursor:pointer}
 </style>
 
 <div id="app"></div>
@@ -1462,7 +1463,7 @@ VCT Americas League Operations`);
   closeNego(){S.nego=null;render()},
   dSal(v){if(!S.nego)return;S.nego.sal=clamp(Math.round(+v/1000)*1000,5000,2e6);{const P0=personById(S.nego.id);if(P0&&P0.kind!=='staff')S.nego.sal=Math.max(MINSAL,S.nego.sal)}const P=personById(S.nego.id);const el=document.getElementById('offVal');if(el)el.textContent=money(S.nego.sal)+'/yr';const pc=document.getElementById('offPct');if(pc)pc.textContent=Math.round(S.nego.sal/askOf(P)*100)+'% of ask';const tt=document.getElementById('offTot');if(tt)tt.textContent=`Total ${money(S.nego.sal*S.nego.years)} over ${S.nego.years} yr`;const r=document.getElementById('offRange');if(r&&+r.value!==S.nego.sal)r.value=S.nego.sal},
   dYears(y){S.nego.years=y;render()},
-  dStart(v){S.nego.starter=v;render()},
+  negoStarter(v){if(!S.nego)return;S.nego.starter=!!v;save();render()},
   offer(){const D=S.nego,P=personById(D.id);if(!P||S.stage)return;const n=negOf(P);if(n.closed)return;D.err='';
     if(P.kind==='staff'&&!canFitStaff(P)){D.err=`Your ${SLOTS[P.slot].name.toLowerCase()} slot is full. Release someone first.`;render();return}
     if(P.kind!=='staff'&&S.roster.length>=6){D.err='Your roster is full (6 players). Release someone first.';render();return}
@@ -1661,7 +1662,7 @@ function negoModal(){const D=S.nego,P=personById(D.id);if(!P)return'';const n=ne
     <input type="range" id="offRange" aria-label="Salary per year" min="${staff?Math.round(ask*.5/1000)*1000:Math.max(MINSAL,Math.round(ask*.5/1000)*1000)}" max="${Math.round(ask*1.5/1000)*1000}" step="1000" value="${D.sal}" oninput="act.dSal(this.value)" ${open?'':'disabled'}>
     <div class="row" style="justify-content:space-between"><span class="note">Asking ${money(ask)}/yr</span><span class="note" id="offTot">Total ${money(D.sal*D.years)} over ${D.years} yr</span></div>
     <div class="row" style="gap:6px"><span class="note" style="min-width:60px">Length</span>${[1,2,3,4].map(y=>`<button class="chip ${D.years===y?'sel':''}" ${open?'':'disabled'} onclick="act.dYears(${y})">${y} yr</button>`).join('')}</div>
-    ${staff?'':`<label class="row" style="gap:8px;font-size:14px"><input type="checkbox" id="offStart" ${D.starter?'checked':''} ${open?'':'disabled'} onchange="act.dStart(this.checked)"> Guarantee a starting spot (you can't bench them)</label>`}
+    ${staff?'':`<label class="row" style="gap:8px;font-size:14px"><input type="checkbox" id="offStart" ${D.starter?'checked':''} ${open?'':'disabled'} onchange="act.negoStarter(this.checked)"> Guarantee a starting spot (you can't bench them)</label>`}
     ${D.err?`<p class="L" style="font-size:14px">${esc(D.err)}</p>`:''}
     <div class="row"><button class="btn primary" ${open?'':'disabled'} onclick="act.offer()">Send offer</button>${n.counter&&!n.counter.final&&open?`<button class="btn" onclick="act.takeCounter()">Accept counter: ${contractLine(n.counter)}</button>`:''}</div>
     <div class="row" style="gap:6px"><span class="note">Patience</span>${Array.from({length:4},(_,i)=>`<i class="pat ${i<Math.ceil(n.pat)?'on':''}"></i>`).join('')}${S.stage?'<span class="note">Transfer window closed</span>':''}</div></div>`;

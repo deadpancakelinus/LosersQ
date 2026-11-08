@@ -353,6 +353,7 @@ button.clock{background:none;border:0;color:inherit;font:inherit;cursor:pointer}
 .tlogo.lg{width:44px;height:44px;vertical-align:middle;margin-right:12px}.tlh{display:flex;align-items:center}
 .av.tav{background:#151b26;padding:5px}.av.emb{background:none;padding:2px}.av.emb img{width:100%;height:100%;object-fit:contain}.av.tav .tlogo{width:100%;height:100%;margin:0;vertical-align:0}
 :root[data-mode="light"] .tlogo:not(.you){background:#151b26;border-radius:4px;padding:2px}:root[data-mode="light"] .av.tav .tlogo{background:none;padding:0}
+.chip.perk{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--fg);margin-top:4px;display:inline-flex;gap:4px;font-size:11px}
 .vn.coach{border-left:3px solid #ff9f43}
 .tog{width:40px;height:20px;border-radius:10px;border:1px solid var(--mute);background:none;position:relative;padding:0;flex:none}.tog i{position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:var(--mute);transition:left .15s}
 .tog.on{background:#4cc2ff;border-color:#4cc2ff}.tog.on i{left:23px;background:#0b1220}
@@ -771,14 +772,14 @@ function happyTip(p,sub){return `Heading toward ${Math.round(happyTarget(p,sub))
 const BENCH_HUNGER=4;
 function passionFromMood(p,sub){const h=happyPassion(p);return sub?Math.round((Math.max(0,h)+BENCH_HUNGER)*10)/10:h}
 function happyPassion(p){return Math.round((p.happiness-60)*.12*10)/10}
-function weekly(){sponsorWeek();fanMilestones();sponsorOutreach();weeklyMessages();rankedReps();perfCheckins();S.focus.forEach(m=>bumpFam(m,3));if(S.perks.bteam)bud(-5000,'B team','Academy upkeep');const R=recRate();const st=starters().map(p=>p.id);S.roster.forEach(p=>{ensureCond(p);const sub=!st.includes(p.id);
+function weekly(){perkFire('weekly');sponsorWeek();fanMilestones();sponsorOutreach();weeklyMessages();rankedReps();perfCheckins();S.focus.forEach(m=>bumpFam(m,3));if(S.perks.bteam)bud(-5000,'B team','Academy upkeep');const R=recRate();const st=starters().map(p=>p.id);S.roster.forEach(p=>{ensureCond(p);const sub=!st.includes(p.id);
   {const hb=habBonus(p);['stamina','sleep','food'].forEach(k=>bump(p,k,R[k]*(sub?2:1)+hb[k]));driftHab(p)}bump(p,'happiness',(happyTarget(p,sub)-p.happiness)*.4);
   bump(p,'passion',R.passion+staffFx().passion+passionFromMood(p,sub)+(p.passion<65?2:p.passion>80?-1:0))});S.careWeek={}}
 /* Assistant coach: reviews ranked games with players. Small form gain every week, and a capped aim gain over the season. */
 function rankedReps(){const AC=staffFx().ac;if(!AC)return;starters().forEach(p=>{p.form=clamp((p.form||0)+AC*.05,-5,5);p.rk=p.rk||0;if(p.rk<1.5){const g=Math.min(1.5-p.rk,AC*.06);p.aim=Math.round((p.aim+g)*100)/100;p.rk+=g}})}
 /* Performance coach: checks every player's routine and handles the conversations for you. */
 function perfCheckins(){const F=staffFx();if(!F.pc)return;const done=[],stuck=[];
-  S.roster.forEach(p=>{habFlags(p).forEach(([topic])=>{const h=hab(p);const ok=rnd()<.45+F.pc*.08+p.happiness/300;
+  S.roster.forEach(p=>{habFlags(p).forEach(([topic])=>{const h=hab(p);const spec=(S.staff||[]).some(x=>x.slot==='pc'&&SPERK[x.id]&&SPERK[x.id].fixes===topic);const ok=spec||rnd()<.45+F.pc*.08+p.happiness/300;
     if(ok){if(topic==='sleep')h.sleep=Math.min(9,h.sleep+.8);if(topic==='meals')h.meals=Math.min(3,h.meals+.7);if(topic==='gym')h.gym=Math.min(6,h.gym+2);done.push(`${p.name} (${topic})`)}else stuck.push(`${p.name} (${topic})`)})});
   const W={sleep:'sleep',meals:'meals',gym:'gym'};
   const txt=!done.length&&!stuck.length?pick(['Weekly check-ins done. Everyone\'s routine looks solid, nothing to flag.','Checked in with the whole roster. Sleep, meals and gym all on track this week.']):
@@ -881,7 +882,7 @@ ${P.name} (${P.role}) is now registered to your VCT Americas roster on a ${contr
 Reminder: partner rosters must field five eligible players, and every player must be paid at least the league minimum.
 
 VCT Americas League Operations`);say(P.id,P.name,P.role,signedSays(P),null)}
-  addLog(`Signed ${P.name}${P.kind==='staff'?' ('+SLOTS[P.slot].name+')':' ('+P.role+')'}: ${contractLine(P.contract)}.`);chirp('sign',{P});return null}
+  addLog(`Signed ${P.name}${P.kind==='staff'?' ('+SLOTS[P.slot].name+')':' ('+P.role+')'}: ${contractLine(P.contract)}.`);chirp('sign',{P});if(P.kind!=='staff')perkFire('sign',{P});return null}
 
 /* ---------- sponsorships (all brands fictional) ---------- */
 const OBL={stream:{name:'Sponsored streams',fx:'Sleep −3 per player each week'},events:{name:'Fan events',fx:'Stamina −2 per player each week'},shoot:{name:'Content shoots',fx:'Chemistry −3 at the start of each stage'},fanhate:{name:'Unpopular with fans',fx:'Fans −0.5 each week'}};
@@ -1065,7 +1066,7 @@ function bookScrim(p){const slot=scrimSlot();const n=scrimsIn(slot).length;if(n>
   const sc=Object.assign({id:'s'+Date.now().toString(36)+Math.floor(rnd()*1e5),si:slot.si,r:slot.r,n,done:false},p);S.scrims.push(sc);const d=scrimDate(sc);pushNoti('calendar','Scrim booked',`vs ${sc.name} on ${sc.map}${d?', '+fmtD(d):''}`);addLog(`Scrim booked: vs ${sc.name} on ${sc.map}${d?' ('+fmtD(d)+')':''}.`);return null}
 function partnerWilling(tier,tid){if(tier==='b')return true;if(tier==='t2')return rnd()<.85;if(playsYou(tid,scrimSlot()))return false;return rnd()<clamp(.4+(S.fame||0)/180+((S.points.you||0)>0?.1:0),.2,.9)}
 function runScrims(){if(!S.stage)return;const due=(S.scrims||[]).filter(x=>!x.done&&x.si===S.stageIdx&&x.r<=S.stage.r);const st=starters();
-  due.forEach(sc=>{sc.done=true;const E=SCRIM[sc.tier];const AC=staffFx().ac;let bLost=false;if(sc.tier==='b'){bLost=rnd()>clamp(.5+(teamOvr(st)-academyOvr())*.04,.3,.85)}const g=(bLost?1.4:1)*E.fam*(staffFx().scout?1.15:1)*(1+AC*.08)*(sc.tier==='b'?clamp(.7+(academyOvr()-70)*.06,.7,1.3):1);bumpFam(sc.map,g);S.chem=clamp(S.chem+E.chem+AC*.2,0,100);
+  due.forEach(sc=>{sc.done=true;const E=SCRIM[sc.tier];const AC=staffFx().ac;let bLost=false;if(sc.tier==='b'){bLost=rnd()>clamp(.5+(teamOvr(st)-academyOvr())*.04,.3,.85)}perkFire('scrim',{map:sc.map,tier:sc.tier});const g=(bLost?1.4:1)*E.fam*(staffFx().scout?1.15:1)*(1+AC*.08)*(sc.tier==='b'?clamp(.7+(academyOvr()-70)*.06,.7,1.3):1);bumpFam(sc.map,g);S.chem=clamp(S.chem+E.chem+AC*.2,0,100);
    st.forEach(p=>{bump(p,'passion',E.passion+AC*.25);if(AC)p.form=clamp((p.form||0)+AC*.06,-5,5);bump(p,'stamina',-4);bump(p,'sleep',-2);if(E.macro){const mg=E.macro*(bLost?1.6:1);p.macro=p.macro||0;if(p.macro<3){p.util=Math.round((p.util+mg)*10)/10;p.macro+=mg}}});
    if(sc.tier==='t1'){S.intel=S.intel||{};S.intel[sc.tid]=S.intel[sc.tid]||{};S.intel[sc.tid][sc.map]=Math.min(1.2,(S.intel[sc.tid][sc.map]||0)+.3);const t=S.teams.find(x=>x.id===sc.tid);if(t){t.sb=t.sb||{};if((t.sb[sc.map]||0)<3){t.maps[sc.map]=(t.maps[sc.map]||0)+.35;t.sb[sc.map]=(t.sb[sc.map]||0)+.35}t.players.forEach(p=>p.form=clamp((p.form||0)+.3,-5,5))}}
    addLog(sc.tier==='b'?(bLost?`Academy beat the main roster on ${sc.map}. Big learning day: familiarity +${Math.round(g)}, extra macro gains.`:`Main roster beat the academy on ${sc.map}: familiarity +${Math.round(g)}.`):`Scrimmed ${sc.name} on ${sc.map}: familiarity +${Math.round(g)}, chemistry +${E.chem}.`);if(sc.tier==='b'&&bLost)(S.bteam||[]).forEach(p=>p.form=clamp((p.form||0)+.4,-5,5));
@@ -1270,7 +1271,7 @@ function roundEvent(W,L,sw,sl,agW,map,r,wAtk){
 }
 function aAttacks(r,startA){const flip=r<12?0:r<24?1:(r-24)%2;return startA!==!!flip}
 function simMap(A,B,map,o){
-  const sA=strength(A,map,o.agA,o.styleA,o.styleB)+(rnd()-.5)*5,sB=strength(B,map,o.agB,o.styleB,o.styleA)+(rnd()-.5)*5+(o.edgeB||0);
+  const sA=strength(A,map,o.agA,o.styleA,o.styleB)+(rnd()-.5)*5+(o.edgeA||0),sB=strength(B,map,o.agB,o.styleB,o.styleA)+(rnd()-.5)*5+(o.edgeB||0);
   const base=1/(1+Math.exp(-(sA-sB)/8));
   const stA=A.players.map(()=>({k:0,d:0,a:0})),stB=B.players.map(()=>({k:0,d:0,a:0}));
   let a=0,b=0,r=0,sa=0,sb=0,pis=null;const rounds=[];
@@ -1294,7 +1295,7 @@ function simMap(A,B,map,o){
 /* Opponent coach AI: learns from your veto history and playstyles; scrims hand them intel. */
 function vh(){S.vh=S.vh||{bans:{},picks:{},styles:{},n:0};return S.vh}
 function coachIntel(tid,m){return((S.intel||{})[tid]||{})[m]||0}
-function coachEdge(tid,m){const V=vh();return Math.min(1.5,(V.picks[m]||0)*.25)+coachIntel(tid,m)}
+function coachEdge(tid,m){const V=vh();return(Math.min(1.5,(V.picks[m]||0)*.25)+coachIntel(tid,m))*(1-(typeof counterScout==='function'?counterScout():0))}
 function predictBan(){const V=vh();return Object.entries(V.bans).sort((a,b)=>b[1]-a[1])[0]}
 function predictStyle(){const V=vh();return Object.entries(V.styles).sort((a,b)=>b[1]-a[1])[0]}
 function coachStyle(o){const f=predictStyle();if(!f||f[1]<3)return o.style;const c=Object.keys(BEATS).find(k=>BEATS[k]===f[0]);return c&&rnd()<Math.min(.75,f[1]*.1)?c:o.style}
@@ -1327,7 +1328,7 @@ function swissPairs(st){
 }
 function startStage(){
   syncPool();
-  chirp('stage',{name:STAGES[S.stageIdx].name});
+  chirp('stage',{name:STAGES[S.stageIdx].name});perkFire('stage');
   if(S.stageIdx>0)fillRosters(STAGES[S.stageIdx].key);
   {const n=(S.sponsors||[]).filter(d=>spT(d.id).obl.includes('shoot')).length;if(n){S.chem=clamp(S.chem-3*n,0,100);addLog(`Sponsor content shoots: chemistry −${3*n}.`)}}
   const d=STAGES[S.stageIdx];const st={key:d.key,name:d.name,type:d.type,r:0,rounds:[],rec:{}};
@@ -1418,7 +1419,7 @@ function doVeto(map){const t=vetoTurn();if(!t)return;S.match.veto.push({by:t.who
 function oppVeto(){const t=vetoTurn();if(!t||t.who!=='opp')return;const o=team(S.match.opp),u=userTeam();doVeto(aiVeto(o,u,vetoRem(),t.act))}
 function curMap(){return S.match.maps[S.match.cur].map}
 function lockIn(){const M=S.match,map=curMap(),u=userTeam(),o=team(M.opp);const agB=autoComp(o.players,map);
-  const sB=coachStyle(o);const V=vh();V.styles[M.style]=(V.styles[M.style]||0)+1;M.oppStyle=sB;const r=simMap(u,o,map,{agA:M.ag,agB,styleA:M.style,styleB:sB,edgeB:coachEdge(o.id,map)});M.live={map,r,agB,shown:0};M.step='live';save();render();startLive()}
+  const sB=coachStyle(o);const V=vh();V.styles[M.style]=(V.styles[M.style]||0)+1;M.oppStyle=sB;const r=simMap(u,o,map,{agA:M.ag,agB,styleA:M.style,styleB:sB,edgeB:coachEdge(o.id,map),edgeA:perkMatchEdge(M)});M.live={map,r,agB,shown:0};M.step='live';save();render();startLive()}
 function startLive(){clearInterval(liveTimer);liveTimer=setInterval(()=>{const L=S.match&&S.match.live;if(!L){clearInterval(liveTimer);return}L.shown++;if(L.shown>=L.r.rounds.length){L.shown=L.r.rounds.length;clearInterval(liveTimer);endMap()}else render()},S.speed)}
 function endMap(){const M=S.match,L=M.live;if(M.step!=='live')return;M.res.push({map:L.map,a:L.r.a,b:L.r.b});
   const st=starters();st.forEach((p,i)=>{const s=S.stats[p.id]||(S.stats[p.id]={name:p.name,k:0,d:0,a:0,r:0,maps:0});s.k+=L.r.stA[i].k;s.d+=L.r.stA[i].d;s.a+=L.r.stA[i].a;s.r+=L.r.rounds.length;s.maps++});
@@ -1433,7 +1434,7 @@ function finishUserMatch(){const M=S.match;const m=S.stage.rounds[M.ri][M.mi];co
   starters().forEach(p=>bump(p,'passion',won?5:(S.perks.psych?-3:-6)));
   {const ps=shuffle(starters());const L=TEAMLINES[won?'win':'loss'];if(ps[0])teamSay(ps[0].name,pick(L),{kind:won?'teamwin':'teamloss'});if(ps[1])teamSay(ps[1].name,pick(L))}
   weekly();
-  addLog(`${won?'W':'L'} ${wa}–${wb} vs ${ttag(M.opp)} (${M.res.map(x=>`${x.map} ${x.a}–${x.b}`).join(', ')})`);chirp('result',{won,wa,wb,opp:M.opp,maps:M.res});
+  addLog(`${won?'W':'L'} ${wa}–${wb} vs ${ttag(M.opp)} (${M.res.map(x=>`${x.map} ${x.a}–${x.b}`).join(', ')})`);chirp('result',{won,wa,wb,opp:M.opp,maps:M.res});perkFire(won?'win':'loss',{maps:M.res});
   clearInterval(liveTimer);S.match=null;S.view='hq';simRest();save();render()}
 
 /* ---------- actions ---------- */
@@ -1541,7 +1542,7 @@ VCT Americas League Operations`);
     if(back)c.msgs.push({who:'them',text:back,t:stamp()});else if(k==='team'){const q=shuffle(starters())[0];if(q)c.msgs.push({who:'them',from:q.name,text:pick(['bet','🫡','say less','ok boss','W']),t:stamp()})}
     c.pending=null;save();render()},
   spSign(id){const o=S.sOffers.find(x=>x.id===id);if(!o||spBlock(o))return;const t=spT(id);S.sponsors.push({id,cat:t.cat,wk:o.wk,win:o.win,play:o.play,up:o.up,earned:o.up});bud(o.up,'Sponsors',`${t.brand} signing bonus`);S.sponsorIncome=(S.sponsorIncome||0)+o.up;
-    if(t.perk&&!S.perks[t.perk]){S.perks[t.perk]=true;addLog(`${t.brand} ships new rigs: ${PERKS.find(p=>p.id===t.perk).name} unlocked.`)}S.sOffers=S.sOffers.filter(x=>x.id!==id);addLog(`Signed ${t.brand} (${t.cat}): ${money(o.up)} up front, ${money(o.wk)}/week.`);chirp('sponsor',{brand:t.brand});{const m=(S.mail||[]).find(x=>x.act&&x.act.sid===id&&!x.done);if(m){mailReply(m,'You',`We are pleased to accept the proposed terms. The signed agreement is attached.`);mailLater(m,`${t.brand} Partnerships`,`We are delighted to welcome ${S.org.name} as a ${t.brand} partner. The ${money(o.up)} signing bonus has been processed, and our team will be in touch shortly with onboarding details.`);m.done=true;m.read=true}}save();render()},
+    if(t.perk&&!S.perks[t.perk]){S.perks[t.perk]=true;addLog(`${t.brand} ships new rigs: ${PERKS.find(p=>p.id===t.perk).name} unlocked.`)}S.sOffers=S.sOffers.filter(x=>x.id!==id);addLog(`Signed ${t.brand} (${t.cat}): ${money(o.up)} up front, ${money(o.wk)}/week.`);chirp('sponsor',{brand:t.brand});perkFire('sponsor',{o,brand:t.brand});{const m=(S.mail||[]).find(x=>x.act&&x.act.sid===id&&!x.done);if(m){mailReply(m,'You',`We are pleased to accept the proposed terms. The signed agreement is attached.`);mailLater(m,`${t.brand} Partnerships`,`We are delighted to welcome ${S.org.name} as a ${t.brand} partner. The ${money(o.up)} signing bonus has been processed, and our team will be in touch shortly with onboarding details.`);m.done=true;m.read=true}}save();render()},
   spAsk(id){const o=S.sOffers.find(x=>x.id===id);if(!o||o.asked)return;o.asked=true;const r=rnd();const t=spT(id);
     const m=(S.mail||[]).find(x=>x.act&&x.act.sid===id&&!x.done);if(m)mailReply(m,'You','Thank you for the proposal. Given our reach this season, we believe the terms should be higher. Would you be open to improving the offer?');
     if(r<.55){['up','wk','win','play'].forEach(k=>o[k]=Math.round(o[k]*1.15/100)*100);o.msg=`${t.brand} bumped their offer by 15%.`;if(m)mailLater(m,`${t.brand} Partnerships`,`We have reviewed your request and can improve our offer. The revised terms are a ${money(o.up)} signing bonus and ${money(o.wk)} per match week${o.win?`, plus ${money(o.win)} per series win`:''}${o.play?` and ${money(o.play)} for playoff qualification`:''}.`)}else if(r<.85){o.msg=`${t.brand} say this is their final offer.`;if(m)mailLater(m,`${t.brand} Partnerships`,`We appreciate the request. However, the current terms represent our final offer.`)}else{S.sOffers=S.sOffers.filter(x=>x.id!==id);addLog(`${t.brand} pulled their offer after you asked for more.`);if(m){mailLater(m,`${t.brand} Partnerships`,`We don't think we're aligned on value. We're withdrawing the proposal. Best of luck this season.`);m.done=true}}save();render()},
@@ -1550,8 +1551,10 @@ VCT Americas League Operations`);
     S.spConfirm=null;bud(-pen,'Sponsors',`Ended ${spT(id).brand} deal early`);S.sponsors=S.sponsors.filter(x=>x.id!==id);addLog(`Ended the ${spT(id).brand} deal early, paid ${money(pen)}.`);save();render()},
   release(id){if(S.stage)return;const p=S.roster.find(x=>x.id===id);if(!p.contract)p.contract={salary:p.salary,years:1};const b=buyout(p);if(b>0&&S.budget<b)return;bud(-b,'Player salaries',`Released ${p.name}`);S.roster=S.roster.filter(x=>x.id!==id);p.form=0;delete p.contract;S.fa.push(p);if(S.bench===id)S.bench=null;if(S.neg)delete S.neg[id];chirp('release',{name:p.name});addLog(`Released ${p.name}${b<0?`, ${money(-b)} back`:b>0?`, paid ${money(b)} buyout`:''}.`);save();render()},
   bench(id){const p=S.roster.find(x=>x.id===id);if(S.bench!==id&&p&&p.contract&&p.contract.starter)return;S.bench=S.bench===id?null:id;save();render()},
+  bootcamp(){if(S.stage||S.stageIdx>=3||S.bootcamp===S.stageIdx||starters().length<5)return;const cost=hasPerk('logistics')?24000:40000;if(S.budget<cost)return;bud(-cost,'Bootcamp',`Bootcamp before ${STAGES[S.stageIdx].name}`);S.bootcamp=S.stageIdx;
+    MAPS.forEach(m=>bumpFam(m,5));S.chem=clamp(S.chem+4,0,100);if(!hasPerk('logistics'))S.roster.forEach(p=>bump(p,'stamina',-8));addLog(`Bootcamp done: +5 familiarity on every pool map, +4 chemistry${hasPerk('logistics')?'':', players a bit tired'}.`);perkFire('bootcamp');save();render()},
   bteam(){if(S.perks.bteam||S.budget<150000)return;bud(-150000,'B team','Academy roster');S.perks.bteam=true;signAcademy();addLog(`Academy roster signed: ${S.bteam.map(p=>p.name).join(', ')}.`);save();render()},
-  promote(pid){const p=(S.bteam||[]).find(x=>x.id===pid);if(!p||S.stage||S.roster.length>=6)return;S.bteam=S.bteam.filter(x=>x!==p);p.contract={salary:Math.max(50000,p.salary),years:1};delete p.academy;S.roster.push(p);bud(-p.contract.salary,'Player salaries',`Promoted ${p.name} from the academy`);addLog(`${p.name} promoted from the academy.`);chirp('promote',{name:p.name});
+  promote(pid){const p=(S.bteam||[]).find(x=>x.id===pid);if(!p||S.stage||S.roster.length>=6)return;S.bteam=S.bteam.filter(x=>x!==p);p.contract={salary:Math.max(50000,p.salary),years:1};delete p.academy;S.roster.push(p);bud(-p.contract.salary,'Player salaries',`Promoted ${p.name} from the academy`);addLog(`${p.name} promoted from the academy.`);chirp('promote',{name:p.name});perkFire('promote',{p});
     const rep=S.fa.filter(x=>x.role===p.role).sort((a,b)=>ovr(a)-ovr(b))[0];if(rep){S.fa=S.fa.filter(x=>x!==rep);rep.academy=true;S.bteam.push(rep);addLog(`${rep.name} joins the academy.`)}save();render()},
   perk(id){const p=PERKS.find(x=>x.id===id);if(S.perks[id]||S.budget<p.cost)return;bud(-p.cost,'Facilities',p.name);S.perks[id]=true;
     if(id==='bootcamp'){S.chem=clamp(S.chem+15,0,100);S.roster.forEach(x=>{x.form=clamp((x.form||0)+1,-5,5);ensureCond(x);bump(x,'passion',10)})}if(id==='house')S.chem=clamp(S.chem+10,0,100);if(id==='bteam'){contactThread('bteam');say('bteam',`${S.org.tag} Academy`,'Academy manager',bteamSays(),undefined)}addLog(`Bought ${p.name}.`);save();render()},
@@ -1651,7 +1654,7 @@ function scoutLines(p){const L=[];if(p.aim>=86)L.push(`Elite gunplay (aim ${p.ai
 function negoModal(){const D=S.nego,P=personById(D.id);if(!P)return'';const n=negOf(P);const ask=askOf(P),pref=prefYears(P);const staff=P.kind==='staff';const mine=staff?S.staff.includes(P):S.roster.includes(P);
   const reqs=reqsOf(P);const o={salary:D.sal,years:D.years,starter:D.starter};const open=!S.stage&&!n.closed&&!mine;
   const resume=staff?`<div class="stack" style="gap:6px"><div class="row" style="gap:6px"><span class="chip">${SLOTS[P.slot].name}</span>${stars(P.stars)}</div>
-    <h4 class="rh">Experience</h4><ul class="rl">${P.resume.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><p class="note">Ratings are sim estimates.</p>
+    <h4 class="rh">Experience</h4><ul class="rl">${P.resume.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>${SPERK[P.id]?`<div class="notice"><b>⚡ Perk: ${esc(SPERK[P.id].l)}</b><br><span class="note">${esc(SPERK[P.id].w)}</span></div>`:''}<p class="note">Ratings are sim estimates.</p>
     <h4 class="rh">On your staff</h4><p class="mute" style="font-size:14px">${SLOTS[P.slot].fx}.</p></div>`
    :`<div class="stack" style="gap:6px"><div class="row" style="gap:6px"><span class="role r-${P.role}">${P.role}</span><span class="chip">${esc(P.pool||'VCT FA')}</span><span class="ovr ${rcls(ovr(P))}" style="font-size:22px">${Math.round(ovr(P))}</span></div>
     <h4 class="rh">Background</h4><p style="font-size:14px">${esc(P.note)}</p>
@@ -2091,7 +2094,7 @@ function staffReply(W,R,M){const out=[];const H=R.hit;const say=a=>out.push(fpic
 
 /* Analyst: scouts the next opponent and messages advice. Better analysts give more, sharper and more accurate hints. */
 function anSkill(){const a=(S.staff||[]).filter(x=>x.slot==='an').sort((x,y)=>y.stars-x.stars);if(!a.length)return null;return{x:a[0],q:a[0].stars+(a[1]?a[1].stars*.25:0)}}
-function anGuess(arr,q,good){/* low-skill analysts sometimes misread */return rnd()<clamp(.45+q*.12,.5,1)?good:pick(arr)}
+function anGuess(arr,q,good){/* low-skill analysts sometimes misread */return hasPerk('heatmap')||rnd()<clamp(.45+q*.12,.5,1)?good:pick(arr)}
 function analystReport(force){const A=anSkill();if(!A)return;const o=nextOpp();if(!o||!S.stage)return;const key=`${S.stageIdx}-${S.stage.r}-${o.id}`;if(!force&&S.anSent===key)return;S.anSent=key;
   const q=A.q,u=userTeam(),st=starters();const byThem=MAPS.slice().sort((a,b)=>(o.maps[a]||0)-(o.maps[b]||0));const weak=byThem.slice(0,2),strong=byThem.slice(-2).reverse();
   const rec=m=>{const r=(VLRREC[o.id]||{})[m];return r&&q>=4?` (${r} in 2026)`:''};
@@ -2118,6 +2121,54 @@ function analystReply(R,M){const A=anSkill();const o=nextOpp();const out=[];cons
   if(R.hit.thanks||R.hit.praise){say(['Happy to help. I\'ll keep digging.','Anytime. Good luck out there.']);return out}
   if(R.hit.greet||R.hit.how){say([`Hey. Deep in ${o.tag} VODs right now.`,'Doing well, just pulling stats.']);return out}
   say([`Ask me about ${o.tag}'s maps, their style, or what comp we should run.`,'I can break down maps, comps or their players. What do you need?']);return out}
+/* ---------- Staff perks: each hire's résumé specialty, with the situation that triggers it ---------- */
+const famUp=v=>{S.fame=clamp((S.fame||0)+v,0,100)};const allR=f=>S.roster.forEach(f);
+const SPERK={
+ zikz:{l:'Rebuild specialist',w:'Each new stage: +6 chemistry',t:'stage',fx:()=>{S.chem=clamp(S.chem+6,0,100);return'rebuild plan in place, chemistry up'}},
+ vapen:{l:'Challengers eye',w:'When you sign a player: they arrive in form',t:'sign',fx:c=>{c.P.form=clamp((c.P.form||0)+1.5,-5,5);return`${c.P.name} is settling in fast`}},
+ stk:{l:'Big-match winner',w:'Playoff and final matches: stronger maps',t:'q'},
+ halcyon:{l:'Structured defaults',w:'Every scrim: extra map familiarity',t:'scrim',fx:c=>{bumpFam(c.map,2);return`defaults on ${c.map} are tighter`}},
+ ledger:{l:'Youth developer',w:'Academy promotions arrive in form',t:'promote',fx:c=>{c.p.form=clamp((c.p.form||0)+2,-5,5);return`${c.p.name} is ready for the main stage`}},
+ anchor:{l:'Ascension veteran',w:'After a loss: half the passion drop is recovered',t:'loss',fx:()=>{starters().forEach(p=>bump(p,'passion',3));return'kept the room calm after the loss'}},
+ tempo:{l:'Mid-round caller',w:'Every official map: small strength boost',t:'q'},
+ rudi:{l:'Player-coach',w:'Every scrim: +1 chemistry',t:'scrim',fx:()=>{S.chem=clamp(S.chem+1,0,100)}},
+ fin:{l:'Grassroots grinder',w:'Weekly: starters gain a little form',t:'weekly',fx:()=>{starters().forEach(p=>p.form=clamp((p.form||0)+.1,-5,5))}},
+ leader:{l:'Championship habits',w:'Each new stage: +4 passion for everyone',t:'stage',fx:()=>{allR(p=>bump(p,'passion',4));return'the team is fired up for the stage'}},
+ plinko:{l:'Retake specialist',w:'Every official map: small strength boost',t:'q'},
+ mapa:{l:'Attack protocols',w:'Every scrim: extra familiarity; trilingual comms',t:'scrim',fx:c=>{bumpFam(c.map,1.5);S.chem=clamp(S.chem+.5,0,100)}},
+ wrist:{l:'Aim blocks',w:'Weekly: extra aim from ranked review',t:'weekly',fx:()=>{starters().forEach(p=>{p.rk=p.rk||0;if(p.rk<2){p.aim=Math.round((p.aim+.05)*100)/100;p.rk+=.05}})}},
+ retake:{l:'One-problem scrims',w:'Every scrim: extra map familiarity',t:'scrim',fx:c=>{bumpFam(c.map,1.5)}},
+ drills:{l:'Aim trainer',w:'Weekly: small aim gains',t:'weekly',fx:()=>{starters().forEach(p=>{p.rk=p.rk||0;if(p.rk<2){p.aim=Math.round((p.aim+.03)*100)/100;p.rk+=.03}})}},
+ compass:{l:'Bilingual comms',w:'Weekly: +0.5 chemistry',t:'weekly',fx:()=>{S.chem=clamp(S.chem+.5,0,100)}},
+ frenya:{l:"Coach's eye",w:'Rival coaches get 30% less out of studying you',t:'q'},
+ heatmap:{l:'Veto model',w:'Rival coach prep halved; veto advice always accurate',t:'q'},
+ spreadsheet:{l:'Tendency reports',w:'After a loss: +3 familiarity on the maps you lost',t:'loss',fx:c=>{c.maps.filter(x=>x.a<x.b).forEach(x=>bumpFam(x.map,3));return'reports on what went wrong are ready'}},
+ demo:{l:'Replay operator',w:'After a loss: +2 familiarity on the maps you lost',t:'loss',fx:c=>{c.maps.filter(x=>x.a<x.b).forEach(x=>bumpFam(x.map,2))}},
+ fourk:{l:'Stats desk',w:'Every official map: small strength boost',t:'q'},
+ lineup:{l:'Lineup library',w:'Every scrim: extra familiarity (strats unlock faster)',t:'scrim',fx:c=>{bumpFam(c.map,2)}},
+ kbrooks:{l:'Player-led series',w:'After a win: big follower boost',t:'win',fx:()=>{famUp(.8);return'the player-led series is blowing up after the win'}},
+ ratio:{l:'Meme machine',w:'After a loss: fans still grow from the memes',t:'loss',fx:()=>{famUp(.4);return'the loss memes are doing numbers'}},
+ sortega:{l:'LAN community',w:'Each new stage: follower boost',t:'stage',fx:()=>{famUp(1)}},
+ clips:{l:'Match-day Shorts',w:'After a win: follower boost',t:'win',fx:()=>{famUp(.5)}},
+ mbishop:{l:'Creator program',w:'When you sign a sponsor: +15% signing bonus',t:'sponsor',fx:c=>{const v=Math.round(c.o.up*.15/1000)*1000;bud(v,'Sponsors',`${c.brand} creator bonus`);return`the creator program got ${c.brand} to add ${money(v)}`}},
+ rico:{l:'Bootcamp documentary',w:'When you run a bootcamp: big follower boost, +4 passion',t:'bootcamp',fx:()=>{famUp(3);allR(p=>bump(p,'passion',4));try{chirp('post',{})}catch(e){}return'the bootcamp documentary is out and fans love it'}},
+ nina:{l:'Match-day vlogs',w:'After a win: follower boost, +1 passion',t:'win',fx:()=>{famUp(.6);starters().forEach(p=>bump(p,'passion',1));return'the match-day vlog is up'}},
+ bert:{l:'Camera crew',w:'Each new stage: follower boost',t:'stage',fx:()=>{famUp(.5)}},
+ framerate:{l:'Behind-the-scenes series',w:'Weekly: small follower boost',t:'weekly',fx:()=>{famUp(.2)}},
+ reelz:{l:'Highlight reels',w:'After a win: small follower boost',t:'win',fx:()=>{famUp(.3)}},
+ logistics:{l:'Bootcamp logistics',w:'Bootcamps cost 40% less and don\'t tire players',t:'q'},
+ ops:{l:'LAN operations',w:'Each new stage: +10 stamina for everyone',t:'stage',fx:()=>{allR(p=>bump(p,'stamina',10));return'travel and setup ran smoothly'}},
+ gloria:{l:'Travel and visas',w:'Each new stage: +10 sleep, +5 stamina',t:'stage',fx:()=>{allR(p=>{bump(p,'sleep',10);bump(p,'stamina',5)})}},
+ apike:{l:'Meals on time',w:'Weekly: +4 food for everyone',t:'weekly',fx:()=>{allR(p=>bump(p,'food',4))}},
+ lynn:{l:'Sleep science',w:'Sleep check-ins always work; weekly +3 sleep',t:'weekly',fx:()=>{allR(p=>bump(p,'sleep',3))},fixes:'sleep'},
+ reset:{l:'Strength and conditioning',w:'Gym check-ins always work; weekly +3 stamina',t:'weekly',fx:()=>{allR(p=>bump(p,'stamina',3))},fixes:'gym'},
+ rhythm:{l:'Meal plans',w:'Meal check-ins always work; weekly +3 food',t:'weekly',fx:()=>{allR(p=>bump(p,'food',3))},fixes:'meals'},
+ kpatel:{l:'Wellness',w:'Weekly: +1 happiness for everyone',t:'weekly',fx:()=>{allR(p=>bump(p,'happiness',1))}}};
+function hasPerk(id){return(S.staff||[]).some(x=>x.id===id)}
+function perkFire(trig,ctx){(S.staff||[]).forEach(x=>{const k=SPERK[x.id];if(!k||k.t!==trig||!k.fx)return;try{const m=k.fx(ctx||{});if(m)addLog(`${x.name} (${k.l}): ${m}.`)}catch(e){}})}
+function perkMatchEdge(M){let e=0;if(hasPerk('tempo'))e+=.25;if(hasPerk('plinko'))e+=.15;if(hasPerk('fourk'))e+=.12;if(hasPerk('stk')&&(M.bo>=5||/playoff|final|semi|upper|lower|grand|decider|qualif/i.test(M.label||'')))e+=.6;return e}
+function counterScout(){return hasPerk('heatmap')?.5:hasPerk('frenya')?.3:0}
+function perkChip(x){const k=SPERK[x.id];return k?`<span class="chip perk" title="${esc(k.w)}">⚡ ${esc(k.l)}</span>`:''}
 /* main entry: returns {msgs, mood, who} */
 function engineReply(k,text,drafts,ctx){const c=S.chats[k];const W=whoIs(k);const M=memOf(k);M.n++;
   const names=(k==='team'?starters():S.roster).map(p=>p.name);const R=readMsg(text,names);const generic=!drafts||!drafts.length||(ctx&&ctx.generic);
@@ -2345,7 +2396,7 @@ function heroCard(p,i,sub){const s=S.stats[p.id]||{k:0,d:0,a:0,maps:0};const kd=
    <div class="ped"><span class="hnum">${sub?'SUB':String(i+1).padStart(2,'0')}</span><h3>${esc(p.name)}</h3><div class="hrole"><span class="role r-${p.role}">${p.role}</span>${p.igl?'<span class="chip">IGL</span>':''}</div>
    <div class="hstats"><div><span>AIM</span><b>${Math.round(p.aim)}</b></div><div><span>UTIL</span><b>${Math.round(p.util)}</b></div><div><span>CLUTCH</span><b>${Math.round(p.clutch)}</b></div></div>
    <div class="hfoot"><span>${esc(comp)} main</span><span>OVR <b>${Math.round(ovr(p))}</b></span><span>K/D <b>${kd}</b></span></div></div></article>`}
-function staffCard(x,title){return`<article class="hcard coach ${x?'':'vacant'}" style="--rc:#ece8df"><div class="spot"></div>${figure(x?x.id:title,true)}<div class="ped"><span class="hnum">${title}</span><h3>${x?esc(x.name):'Vacant'}</h3><div class="hfoot">${x?`<span>${'★'.repeat(x.stars)}${'☆'.repeat(5-x.stars)}</span><span>${esc(x.resume[x.resume.length-1]).slice(0,60)}</span>`:'<span>Hire on the Staff tab</span>'}</div></div></article>`}
+function staffCard(x,title){return`<article class="hcard coach ${x?'':'vacant'}" style="--rc:#ece8df"><div class="spot"></div>${figure(x?x.id:title,true)}<div class="ped"><span class="hnum">${title}</span><h3>${x?esc(x.name):'Vacant'}</h3><div class="hfoot">${x?`<span>${'★'.repeat(x.stars)}${'☆'.repeat(5-x.stars)}</span>${perkChip(x)}`:'<span>Hire on the Staff tab</span>'}</div></div></article>`}
 function vTeam(){const st=starters(),subs=S.roster.filter(p=>!st.includes(p));const hc=(S.staff||[]).find(x=>x.slot==='hc'),ac=(S.staff||[]).find(x=>x.slot==='ac');
   const w=S.history.length+'';const rec=S.stage&&S.stage.rec&&S.stage.rec.you;
   return`<section class="hall"><div class="hall-head"><img class="hall-emb" src="wall/emblem.png" alt=""><div><span class="eyebrow">VCT Americas 2026</span><h1>${esc(S.org.name)}</h1><p class="mute">${rec?`${STAGES[S.stageIdx].name} · ${rec.w}-${rec.l}`:'Roster'} · ${fmtFans(S.fame)} followers · Chemistry ${Math.round(S.chem)}</p></div></div>
@@ -2356,6 +2407,7 @@ function vSchedule(){const ps=S.roster;const locked=!!S.match;
  const plan=`<div class="panel stack"><div><span class="eyebrow">Team plan</span><h3>Practice and academy</h3></div>
    <div class="stack" style="gap:6px"><span class="mute" style="font-size:13px">Practice focus: pick two maps to grind, +2 map rating each${locked?' (locked during a match)':''}</span><div class="row" style="gap:6px">${MAPS.map(m=>`<button class="chip ${S.focus.includes(m)?'sel':''}" ${locked?'disabled':''} onclick="act.focus('${m}')">${m}</button>`).join('')}</div></div>
    <div class="stack" style="gap:6px"><span class="mute" style="font-size:13px">Default playstyle</span><div class="row" style="gap:6px">${Object.keys(STYLES).map(k=>`<button class="chip ${S.style===k?'sel':''}" title="${esc(STYLES[k])}" onclick="act.dstyle('${k}')">${k}</button>`).join('')}</div></div>
+   <div class="row" style="justify-content:space-between;gap:10px"><span class="mute" style="font-size:13px">Bootcamp: five days at a training facility before ${STAGES[Math.min(S.stageIdx,2)].name}. +5 familiarity on every pool map, +4 chemistry, a little tiring. ${money(hasPerk('logistics')?24000:40000)}.${(S.staff||[]).filter(x=>SPERK[x.id]&&SPERK[x.id].t==='bootcamp').map(x=>` ${esc(x.name)}'s documentary perk triggers.`).join('')}</span>${S.bootcamp===S.stageIdx?'<span class="chip ok">Done this stage</span>':`<button class="btn sm" ${S.stage||S.stageIdx>=3||starters().length<5||S.budget<(hasPerk('logistics')?24000:40000)?'disabled':''} title="${S.stage?'Bootcamps run between stages':''}" onclick="act.bootcamp()">Run bootcamp</button>`}</div>
    <div class="row" style="justify-content:space-between;gap:10px"><span class="mute" style="font-size:13px">B team: ${S.perks.bteam?`${S.org.tag} Academy, avg ${Math.round(academyOvr())} OVR. Their own manager handles player care.`:'five real free agents signed as your academy. $150k, then $5k a week.'}</span>${S.perks.bteam?'<span class="chip ok">Active</span>':`<button class="btn sm" ${S.budget<150000?'disabled':''} onclick="act.bteam()">Sign B team · $150k</button>`}</div>
    ${S.perks.bteam&&(S.bteam||[]).length?`<div class="tbl-wrap"><table><thead><tr><th>Academy player</th><th>Role</th><th class="n">Aim</th><th class="n">Util</th><th class="n">Clutch</th><th class="n">OVR</th><th>From</th><th></th></tr></thead><tbody>${S.bteam.map(p=>`<tr><td class="pname">${esc(p.name)}</td><td><span class="role r-${p.role}">${p.role}</span></td><td class="n">${Math.round(p.aim)}</td><td class="n">${Math.round(p.util)}</td><td class="n">${Math.round(p.clutch)}</td><td class="n">${Math.round(ovr(p))}</td><td class="note">${esc(p.pool||'')}</td><td><button class="btn sm" ${S.stage||S.roster.length>=6?'disabled':''} title="${S.stage?'Roster moves reopen between stages':'Move to the main roster on a 1-year deal'}" onclick="act.promote('${p.id}')">Promote</button></td></tr>`).join('')}</tbody></table></div>`:''}</div>`;
  if(!ps.length)return`<div class="stack">${plan}<div class="panel"><p class="mute">Sign players in the Market to see their schedules.</p></div></div>`;
@@ -2388,7 +2440,7 @@ function vStaff(){const locked=!!S.stage;const f=staffFx();const slots=Object.en
    ${locked?`<p class="notice" style="padding:10px 14px">Hiring is closed until ${STAGES[S.stageIdx].name} ends.</p>`:''}
    <p class="mute" style="font-size:13px">Star ratings are sim estimates.</p>
    <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Role</th><th>Rating</th><th class="n">Asks/yr</th><th>Wants</th><th></th></tr></thead><tbody>
-   ${list.map(x=>`<tr><td><div class="pname">${esc(x.name)}</div><div class="note">${esc(x.resume[x.resume.length-1])}</div></td><td>${SLOTS[x.slot].name}</td><td>${stars(x.stars)}</td><td class="n">${money(x.ask)}</td><td class="wants">${prefYears(x)}-yr${x.reqTxt.length?` · <span class="req-n" title="${esc(x.reqTxt.map(r=>REQS[r]).join(', '))}">${x.reqTxt.length} demand${x.reqTxt.length>1?'s':''}</span>`:''}</td><td>${negBtn(x)}</td></tr>`).join('')}
+   ${list.map(x=>`<tr><td><div class="pname">${esc(x.name)}</div><div class="note">${esc(x.resume[x.resume.length-1])}</div>${perkChip(x)}</td><td>${SLOTS[x.slot].name}</td><td>${stars(x.stars)}</td><td class="n">${money(x.ask)}</td><td class="wants">${prefYears(x)}-yr${x.reqTxt.length?` · <span class="req-n" title="${esc(x.reqTxt.map(r=>REQS[r]).join(', '))}">${x.reqTxt.length} demand${x.reqTxt.length>1?'s':''}</span>`:''}</td><td>${negBtn(x)}</td></tr>`).join('')}
    </tbody></table></div></section>
   <aside class="panel stack"><div><span class="eyebrow">Your staff · ${S.staff.length}/${Object.values(SLOTS).reduce((a,v)=>a+v.n,0)}</span><h2>${esc(S.org.tag)} staff</h2></div><div>${cur}</div>
    <div class="stack" style="gap:4px;font-size:13px"><div class="row" style="justify-content:space-between"><span class="mute">Coaching rating bonus</span><b>+${f.hc.toFixed(1)}</b></div><div class="row" style="justify-content:space-between"><span class="mute">Map rating bonus</span><b>+${f.map.toFixed(1)}</b></div><div class="row" style="justify-content:space-between"><span class="mute">Extra money per series win</span><b>${money(f.winCash)}</b></div><div class="row" style="justify-content:space-between"><span class="mute">Weekly passion from fans</span><b>+${f.passion.toFixed(1)}</b></div><div class="row" style="justify-content:space-between"><span class="mute">Full scouting reports</span><b>${f.scout?'Yes':'No'}</b></div><div class="row" style="justify-content:space-between"><span class="mute">Scrim and ranked boost</span><b>${f.ac?'+'+Math.round(f.ac*8)+'% scrim value':'None'}</b></div><div class="row" style="justify-content:space-between"><span class="mute">Routine check-ins</span><b>${f.pc?'Handled weekly':'You do them'}</b></div></div>
@@ -2411,7 +2463,7 @@ function vGuide(){const sec=(t,b)=>`<div class="panel stack gd"><h3>${t}</h3>${b
   ${sec('Match day',`<p>Each series starts with the map veto, then you pick five agents and a playstyle for every map. Map rating comes from practice focus, VOD familiarity and your analyst.</p><p>The map pool follows the real 2026 rotation: Kickoff ${POOLS.kickoff.join(', ')}; Stage 1 ${POOLS.s1.join(', ')}; Stage 2 ${POOLS.s2.join(', ')}.</p><p>Playstyles counter each other in a loop: ${Object.entries(BEATS).map(([a,b])=>`<b>${a}</b> beats ${b}`).join(', ')}.</p>`)}
   ${sec('Opposing coaches',`<p>Rival coaches veto around their own team first: they ban their weakest maps and pick their best, using each team's real 2026 VCT Americas map results. Then they study yours. Maps you keep picking get banned or counter-prepped (up to +1.5 for them), and they stop wasting bans on maps you always ban yourself.</p><p>Lean on one playstyle and they'll start bringing its counter. The <b>Coach read</b> box in the scouting report and VOD Review shows what they've figured out.</p>`)}
   ${sec('Scrims',`<p>Book scrims in Messages through the LFG chat or a DM. Scrims raise your familiarity on that map, and the other team's too. Tier-1 teams also take notes on you: +0.3 on that map for every scrim, up to +1.2 when you meet them.</p><p>Your B team, set up on the Schedule tab, gives better macro, but scrimming it builds less passion than tier-1 or tier-2 opponents. Losing to your academy is a good sign: the main roster learns more from those sets.</p>`)}
-  ${sec('Money',`<p>Everything runs through Budget.xlsx in the Office: salaries, staff, sponsors, prize money and win bonuses. Contracts last one to four years. Players and staff can accept, counter or walk away.</p><p>Staff: an analyst messages you a scouting report before each match: weak maps, a veto plan, the counter style and a comp. Better analysts give more detail and are more accurate. An assistant coach makes every scrim and ranked session worth more. A performance coach checks in on routines for you every week.</p><p>Sponsors pay weekly, and some add bonuses or obligations. Better brands rarely reach out first, so you'll have to pitch them.</p>`)}
+  ${sec('Money',`<p>Everything runs through Budget.xlsx in the Office: salaries, staff, sponsors, prize money and win bonuses. Contracts last one to four years. Players and staff can accept, counter or walk away.</p><p>Every staff member also has a perk from their résumé that triggers in a specific situation: after wins or losses, in scrims, at the start of a stage, when you sign someone, or when you run a bootcamp. Hover the ⚡ tag to see it.</p><p>Staff: an analyst messages you a scouting report before each match: weak maps, a veto plan, the counter style and a comp. Better analysts give more detail and are more accurate. An assistant coach makes every scrim and ranked session worth more. A performance coach checks in on routines for you every week.</p><p>Sponsors pay weekly, and some add bonuses or obligations. Better brands rarely reach out first, so you'll have to pitch them.</p>`)}
   </div></div>`}
 function stagePath(){return`<div class="path">${[...STAGES.map(s=>s.name),'Champions'].map((n,i)=>`<div class="step ${i<S.stageIdx?'done':i===S.stageIdx?'now':''}"><b>${n}</b><span class="mute">${i<3?STAGES[i].event:'Shanghai'}</span></div>`).join('')}</div>`}
 function careCost(c){return Math.round(c.cost*(1-staffFx().careDisc))}

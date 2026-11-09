@@ -1963,6 +1963,14 @@ function setTier(t){try{localStorage.setItem('losersq.tier',t)}catch(e){}}
 let LLM_TIER=getTier();const llmModel=()=>QTIERS[LLM_TIER||'better'].model;
 function llmReady(){return LLM.st==='ready'}
 let llmPaint=0;function llmProgressOld(){const n=Date.now();if(n-llmPaint>400){llmPaint=n;if(S.view==='desk'&&S.desk.open.includes('settings'))render()}}
+/* downloaded model files stay in the browser's storage; let players clear the tiers they aren't using (saves are untouched) */
+const QCACHE={};let QBUSY=false;
+async function webllmLib(){return LLM.lib||(LLM.lib=await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm'))}
+async function qScan(){try{const w=await webllmLib();for(const k in QTIERS)QCACHE[k]=await w.hasModelInCache(QTIERS[k].model)}catch(e){}
+  try{const e=await navigator.storage.estimate();QCACHE.used=e.usage||0}catch(e){}QCACHE.scanned=true;render()}
+async function qDelete(){if(QBUSY)return;QBUSY=true;render();const cur=LLM_TIER||'better';let n=0;
+  try{const w=await webllmLib();for(const k in QTIERS){if(k===cur)continue;if(await w.hasModelInCache(QTIERS[k].model)){await w.deleteModelAllInfoInCache(QTIERS[k].model);n++}}}catch(e){}
+  QBUSY=false;QCACHE.msg=n?`Removed ${n} unused model${n>1?'s':''}.`:'Nothing to remove.';await qScan()}
 async function llmSwitch(t){if(!QTIERS[t]||t===LLM_TIER&&LLM.st==='ready'||LLM.switching)return;LLM_TIER=t;setTier(t);
   if(!LLM.eng){LLM.st='off';llmLoad();return}
   LLM.switching=true;LLM.st='loading';LLM.pct=0;LLM.msg='Switching';render();
@@ -1973,7 +1981,7 @@ async function llmLoad(){if(LLM.st==='loading'||LLM.st==='ready')return;
   if(!navigator.gpu){LLM.st='nogpu';gateUpdate();return}
   try{const ad=await navigator.gpu.requestAdapter();if(!ad){LLM.st='nogpu';gateUpdate();return}}catch(e){LLM.st='nogpu';gateUpdate();return}
   LLM.st='loading';LLM.pct=0;LLM.msg='Starting';gateUpdate();
-  try{const webllm=await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm');
+  try{const webllm=await webllmLib();
     LLM.eng=await webllm.CreateMLCEngine(llmModel(),{initProgressCallback:r=>{LLM.pct=Math.round((r.progress||0)*100);LLM.msg=r.text||'';gateUpdate()}});
     LLM.st='ready';gateUpdate()}
   catch(e){LLM.st='error';LLM.msg=String(e&&e.message||e).slice(0,160);gateUpdate()}}
@@ -2261,7 +2269,9 @@ ${facts?'FACTS TO CONVEY: '+facts:''}`;
 function moodBump(p,m){p.moodWk=p.moodWk||{};const w=S.weekN||0;const u=p.moodWk[w]||0;const d=clamp(m*1.5,-6-u,6-u);if(!d)return;p.moodWk={[w]:u+d};bump(p,'happiness',d);if(m>0)bump(p,'passion',d*.4)}
 function aiRow(){const cur=LLM_TIER||'better';const stt=LLM.st==='ready'?'Ready':LLM.st==='loading'?(LLM.switching?'Switching… ':'Loading ')+LLM.pct+'%':LLM.st==='error'?'Error: '+esc(LLM.msg):esc(LLM.st);
  return`<div class="setc"><div><b>Dialogue quality</b><p class="note">${QTIERS[cur].label}, running on this computer · ${stt}. Bigger models need more graphics memory and a one-time download. While a model switches, replies use the built-in writer.</p></div>
- <div class="qtiers sm">${Object.entries(QTIERS).map(([k,T])=>`<button class="qtier ${k===cur?'on':''}" aria-pressed="${k===cur}" ${LLM.switching?'disabled':''} onclick="llmSwitch('${k}')"><b>${T.name}</b><span>${T.d}</span><span class="note">${T.dl} · ${T.gpu}+ GPU memory</span></button>`).join('')}</div></div>`}
+ <div class="qtiers sm">${Object.entries(QTIERS).map(([k,T])=>`<button class="qtier ${k===cur?'on':''}" aria-pressed="${k===cur}" ${LLM.switching?'disabled':''} onclick="llmSwitch('${k}')"><b>${T.name}</b><span>${T.d}</span><span class="note">${T.dl} · ${T.gpu}+ GPU memory${QCACHE[k]?' · downloaded':''}</span></button>`).join('')}</div></div>
+ ${(()=>{if(!QCACHE.scanned&&!QCACHE.pending){QCACHE.pending=true;setTimeout(qScan,0)}const other=Object.keys(QTIERS).filter(k=>k!==cur&&QCACHE[k]);
+ return`<div class="setc"><div><b>Downloaded models</b><p class="note">Models stay on this computer so the game starts fast. ${other.length?`Not in use: ${other.map(k=>QTIERS[k].name+' ('+QTIERS[k].dl.replace('about ','~')+')').join(', ')}.`:'Only the model you use is stored.'}${QCACHE.used>5e7?` Game storage in use: ${(QCACHE.used/1e9).toFixed(1)} GB.`:''} Your saves are never touched.${QCACHE.msg?' <b>'+esc(QCACHE.msg)+'</b>':''}</p></div><button class="btn sm" ${QBUSY||!other.length||LLM.switching?'disabled':''} onclick="qDelete()">${QBUSY?'Deleting…':'Delete unused models'}</button></div>`})()}`}
 function aiDeliver(k,drafts,pend,ctx){const c=S.chats[k];if(!c)return;const last=[...c.msgs].reverse().find(m=>m.who==='you');const eng=engineReply(k,last?last.text:'',drafts,ctx||{});
   const mood=clamp(Math.round(eng.mood),-2,2);if(mood){if(eng.who.kind==='player')moodBump(eng.who.p,mood);else if(eng.who.kind==='group')starters().forEach(p=>moodBump(p,mood*.5))}
   c.typing=true;const t0=Date.now(),wait=800+rnd()*6500;save();render();
